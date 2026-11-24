@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 [← Back to Home](index.html)
 
 # Projects Showcase: Three Months of Receipt-Verified Builds

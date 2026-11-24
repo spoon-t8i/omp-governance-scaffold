@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 [← Back to Home](index.html)
 
 # Positive & Negative Attractors in Autonomous Coding Loops

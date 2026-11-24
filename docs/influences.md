@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 [← Back to Home](index.html)
 
 # Hardware, Software & Engineering Lineage

@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 [← Back to Home](index.html)
 
 # Compaction Sieve Armor & Signal-to-Noise Engineering

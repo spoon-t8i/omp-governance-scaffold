@@ -1,3 +1,7 @@
+---
+layout: default
+---
+
 [← Back to Home](index.html)
 
 # Conceptual Notes: Multi-Timescale Control & Conjectural Extensions

@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "comment": "L2B feedback-governance thresholds. Every number here was calibrated against a recorded failure in EVENTS.md; changing one changes what wakes L2B.",
+  "looping": {
+    "command_repeat_threshold": 3,
+    "file_rewrite_threshold": 4,
+    "window_events": 400,
+    "telemetry": [
+      "~/.omp/agent/run/session-events.jsonl",
+      "~/.omp/run/session-events.jsonl"
+    ],
+    "telemetry_dir": "~/.omp/agent/run/telemetry",
+    "max_event_age_s": 7200,
+    "gate_patterns": [
+      "spine_check",
+      "plan_check",
+      "_harness",
+      "harness/",
+      "pytest",
+      "py.test",
+      "check_",
+      "_test.py",
+      "test_check",
+      "gate_exec",
+      "gates.mjs",
+      "self-test",
+      "self_test",
+      "--self-test",
+      "rehydrate",
+      "sieve",
+      "checkpoint.sh",
+      "entail_check",
+      "num_provenance",
+      "fact_store",
+      "impact_analysis",
+      "ownership.py",
+      "edit_file",
+      "npm test",
+      "cargo test",
+      "make test",
+      "run_tests",
+      "verify"
+    ],
+    "comment": "H-DEAD-25: bg_19 re-launched calibrate_v2.py four times while the real defect was one unguarded divide. Three relaunches with no gate between is the point where relaunching stopped being exploration. A gate run, pass or fail, resets both runs: verification is the loop breaker. The stream is the telemetry writer's session-events.jsonl - the live transcript, including the files a compaction boundary rolled past, which is where a loop's evidence used to vanish. gate_patterns is the writer's gate vocabulary; max_event_age_s drops a stream left behind by a session that already stopped, so a dead session cannot manufacture a loop finding.",
+    "interpreter_noise": {
+      "drop": [
+        "-W",
+        "-B",
+        "-O",
+        "-OO",
+        "-u",
+        "-E",
+        "-I",
+        "-S",
+        "-x",
+        "-P",
+        "-q",
+        "-tt",
+        "-t",
+        "-v",
+        "-s",
+        "--fast"
+      ],
+      "value": [
+        "-W",
+        "-X",
+        "-c",
+        "-m",
+        "-e",
+        "--rootdir",
+        "-k",
+        "-n",
+        "-p",
+        "--timeout",
+        "-C",
+        "-o",
+        "-e"
+      ],
+      "comment": "verbosity/warning flags whose value is not the target; -c and -m carry the program, so their payload is the identity"
+    }
+  },
+  "progress_stall": {
+    "min_gate_free_events": 60,
+    "churn_ratio_threshold": 3.0,
+    "comment": "calibrated 2026-11-19 on the omp transcript corpus (manifest_sha256 75463ff2c7f2952188c8d2742627879919d506679b43ab5e5c2588002045de6c, 253 transcripts, 1299984656 bytes, 1661 labelled repeat increments): a gate-free stretch of >= 60 events whose events-per-distinct-target ratio reaches 3 fires on 5 churn intervals (rate 0.0338) and 7 intervals that ended in a passing gate (rate 0.0015). The grid's looser settings (N12/R2) reach 0.0163 on normal work, which is where a wake stops being a signal. ORDER_MIN holds at share_bound_first 0.9375, so when a per-identity bound crosses inside the same stretch the bound lane owns it and this lane keeps silent."
+  },
+  "referent": {
+    "cue_grammar_only": true,
+    "receipt_exempt": true,
+    "json_commit_fields": true,
+    "evidence_fields_only": true,
+    "intent_fields": [
+      "detail",
+      "deliverable",
+      "name",
+      "title",
+      "plan",
+      "hypothesis",
+      "objective",
+      "description",
+      "next_action",
+      "rationale",
+      "deps"
+    ],
+    "evidence_fields": [
+      "evidence",
+      "receipt",
+      "receipts",
+      "output",
+      "gate_result",
+      "artifacts",
+      "artifact",
+      "output_path",
+      "receipt_path"
+    ],
+    "path_glob_exempt": true,
+    "receipt_roots": [
+      "~/.omp/agent"
+    ],
+    "index_prune": [
+      ".git",
+      "blobs",
+      "cache",
+      "node_modules",
+      "__pycache__",
+      ".mypy_cache",
+      ".ruff_cache",
+      ".venv"
+    ],
+    "index_max_files": 40000,
+    "basename_elsewhere_is_drift": true,
+    "runner_race_minutes": 10,
+    "sha_min_len": 7,
+    "sha_max_len": 40,
+    "batch_git": true,
+    "scan": [
+      "STATE.md",
+      "CORE.md",
+      "DAG.json",
+      "SUMMARY.md",
+      "README.md",
+      "FINDINGS.md",
+      "EXPERIMENTS.md",
+      "HYPOTHESES.md",
+      "perm-record.md"
+    ],
+    "ref_repos": [
+      "~/.omp/agent",
+      "~/Projects/*",
+      "~/*"
+    ],
+    "ref_repo_max": 64,
+    "comment": "A SHA is only a referent break when the grammar around it claims commit identity: a bare hash beside sha256/digest/receipt is an artifact digest and lives on disk, not in git. run/ is gitignored box-local liveness evidence, so a cited run/ path whose basename exists somewhere is recorded as path drift (a note, not a surprise); only a basename absent from the whole repo means the artifact was never written here."
+  },
+  "post_compact": {
+    "raw_xml_patterns": [
+      "<tool_call",
+      "<invoke name=",
+      "<function=",
+      "<parameter="
+    ],
+    "turn_file": "~/.omp/agent/run/session-turn.txt",
+    "closed_statuses": [
+      "done",
+      "closed",
+      "verified"
+    ],
+    "honor_gate_freeze": true,
+    "stale_required_from": "2026-11-15",
+    "grace_seconds": 90,
+    "gate_script_extensions": [
+      ".py",
+      ".mjs",
+      ".js",
+      ".sh"
+    ],
+    "comment": "H-DEAD-11/19: after a boundary the model re-emits an edit/write block from evicted memory and the payload corrupts the call. H-DEAD-32: a node stamped pass whose gate script has since moved is a pass for code that no longer exists, so the node's gate command AND the scripts its evidence names are both staleness referents. turn_file points at the telemetry writer's elided slice (tool-call arguments and result payloads removed), so a hit is a marker the model itself emitted in text, not the harness's own block skeleton."
+  },
+  "test_regression": {
+    "masking_filters": [
+      "\\|\\s*head\\b",
+      "\\|\\s*tail\\b",
+      "\\|\\s*grep\\b",
+      "\\|\\s*sed\\s+-n",
+      ">\\s*/dev/null"
+    ],
+    "pipefail_ok": [
+      "pipefail",
+      "PIPESTATUS"
+    ],
+    "at_iso_required_from": "2026-11-15",
+    "at_iso_keys": [
+      "at_iso",
+      "ts",
+      "stamp",
+      "run_at",
+      "when",
+      "at"
+    ],
+    "receipt_log": "run/harness_loop.log",
+    "baseline_file": "run/surprise/baseline.json",
+    "compare_last_two_receipts": true,
+    "comment": "H-DEAD-31: a gate run as `... | head -20` returns head's exit status, so a failing suite is recorded as a pass; `| tail -N` without pipefail does the same to the suite's own exit code. A red or unstamped gate_result is a pass claim with no time coordinate, which is unfalsifiable."
+  },
+  "response": {
+    "budget_tokens": 120,
+    "max_blocks": 3,
+    "tokenizer_url": "http://127.0.0.1:8080/v1/chat/completions",
+    "tokenizer_timeout_s": 5,
+    "token_divisor": 3.0,
+    "comment": "120 tokens with gamma_down = 1.0: the block must be readable in one glance and cost less than the next wasted launcher. Token counts come from the live tokenizer when reachable (max_tokens=1, usage.prompt_tokens); the divisor is the estimate used when it is not, and it is deliberately conservative.",
+    "failed_min_words": 4,
+    "fix_min_words": 8
+  },
+  "l2b": {
+    "telemetry_writer": "~/.omp/agent/tools/session_telemetry.py",
+    "refresh_timeout_ms": 2000,
+    "telemetry_cwd": null,
+    "comment": "The loop lane reads an event stream it does not produce. This is the step that keeps that stream current: an audit asks the writer for a fresh slice of the transcript belonging to telemetry_cwd (default: the auditing process's own cwd) before scanning. A writer that is missing, times out or finds no transcript costs a gap note, never a false pass and never the audit itself."
+  },
+  "default_repos": [
+    "~/.omp/agent",
+    "~/Projects/chromatic_earthworm"
+  ],
+  "log_dir": "~/.omp/run/surprise",
+  "dead_tag": "H-DEAD-37",
+  "comment_top": "Two layers, one boundary. L2A (spine_check/plan_check via the hook and the commit boundary) is feedforward: it fires where a discontinuity is already known. L2B (this policy) is feedback: it sleeps through normal execution and wakes only on an anomaly. default_repos lists what L2B GUARDS; ref_repos lists what it may RESOLVE a citation against - guarding every repo on the box would make the DORMANT claim unprovable."
+}
