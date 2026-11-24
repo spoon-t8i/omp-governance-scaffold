@@ -1,3 +1,5 @@
+[← Back to Home](index.html)
+
 # Positive & Negative Attractors in Autonomous Coding Loops
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*

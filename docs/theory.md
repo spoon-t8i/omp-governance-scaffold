@@ -1,3 +1,5 @@
+[← Back to Home](index.html)
+
 # Conceptual Notes: Multi-Timescale Control & Conjectural Extensions
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
@@ -10,11 +12,11 @@ The core of this repository is practical software engineering: keeping local AI 
 
 In practice, our **Oh-My-Pi (OMP)** scaffold works because it refuses to treat all information at the same speed:
 
-* **Fast Execution ($\tau_0$):** Shell commands, file reads, and syntax edits happen turn by turn inside a tight ~43k working window.
-* **Medium Compaction Filtering ($\tau_1$):** At ~50k tokens, the `S1–S4` pre-compaction sieve strips stale logs while carrying active directives, directory locks, and exact CLI flags forward.
-* **Slow Governance Spine ($\tau_2$):** A frozen 1,704-token rule header and disk-backed file hashes remain unchanged across resets, anchoring the session against silent drift.
+* **Fast Execution (τ₀):** Shell commands, file reads, and syntax edits happen turn by turn inside a tight ~43k working window.
+* **Medium Compaction Filtering (τ₁):** At ~50k tokens, the `S1–S4` pre-compaction sieve strips stale logs while carrying active directives, directory locks, and exact CLI flags forward.
+* **Slow Governance Spine (τ₂):** A frozen 1,704-token rule header and disk-backed file hashes remain unchanged across resets, anchoring the session against silent drift.
 
-When an adaptive system collapses all three speeds onto a single fast clock ($\tau = 1$), small errors compound into recursive loops—whether in a simulated control agent (`CEIS`) or an unguarded coding session.
+When an adaptive system collapses all three speeds onto a single fast clock (τ = 1), small errors compound into recursive loops—whether in a simulated control agent (`CEIS`) or an unguarded coding session.
 
 ---
 
