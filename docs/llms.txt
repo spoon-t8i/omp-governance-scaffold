@@ -1,0 +1,16 @@
+# OMP Governance Scaffold & Compaction Sieve Armor
+
+> Deterministic governance spine (1,704 tokens), ~43k working runway SNR engineering, and S1–S4 pre-compaction sieve armor for multi-hour local AI coding sessions. Published under Apache License 2.0.
+
+## Canonical Pages
+
+- [Home & Architecture Overview](https://spoon-t8i.github.io/omp-governance-scaffold/index.html): Core metrics (1,704-token spine, 98.7% prefix-cache reuse, 54–74.7 tok/s decode, 584/584 harness checks), Signal-to-Noise Ratio summary, and glossary.
+- [Compaction Sieve Armor & SNR Mechanics](https://spoon-t8i.github.io/omp-governance-scaffold/compaction-sieve.md): Softmax dilution, quantized logit margins, 65,536-token partition table, and S1–S4 pre-compaction extractor rules (0 B idle, <=137 tokens active).
+- [Positive & Negative Attractors](https://spoon-t8i.github.io/omp-governance-scaffold/attractors.md): Control-loop taxonomy and real incident receipts (secular drift, flag-drift spin loops, self-certifying tests, and false-green listener traps).
+- [Projects Showcase](https://spoon-t8i.github.io/omp-governance-scaffold/projects.md): Receipt-verified builds across Saturn Jukebox (1,098 albums, 8,488 discs, max|d|=0 vs ffmpeg), AMBER_ASCII 60 Hz raymarching, CEIS / Secular Drift Crucible (24,000 transitions), and Cold-Boot KV-Wipe benchmarks.
+- [Conceptual & Conjectural Notes](https://spoon-t8i.github.io/omp-governance-scaffold/theory.md): Multi-timescale control clocks (tau_0, tau_1, tau_2) and clearly labeled high-level conjectures.
+- [Hardware & Engineering Influences](https://spoon-t8i.github.io/omp-governance-scaffold/influences.md): Runtime stack, tri-GPU display isolation, counterparty testing, and community lineage.
+
+## Repository Source & License
+
+- [GitHub Repository](https://github.com/spoon-t8i/omp-governance-scaffold): Source scripts (`src/pre_compact_sieve.py`), Apache 2.0 `LICENSE`, and `NOTICE`.

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OMP Governance Scaffold &amp; Compaction Sieve Armor</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --good: #3fb950;
+      --bad: #f85149;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.65; }
+    header { border-bottom: 1px solid var(--border); background: var(--surface); padding: 1rem 1.5rem; position: sticky; top: 0; z-index: 10; }
+    nav { max-width: 1040px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; justify-content: space-between; }
+    nav .brand { font-weight: 700; color: var(--text); text-decoration: none; }
+    nav .links { display: flex; flex-wrap: wrap; gap: 1rem; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+    nav a:hover { color: var(--accent); }
+    main { max-width: 1040px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+    .hero { padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; font-family: var(--mono); font-size: 0.8rem; padding: 0.2rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; color: var(--accent); margin-bottom: 0.75rem; }
+    h1 { font-size: 2.2rem; line-height: 1.25; margin: 0.25rem 0 1rem; }
+    h2 { font-size: 1.5rem; margin-top: 2.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.15rem; margin-top: 1.5rem; color: var(--accent); }
+    p { max-width: 72ch; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.75rem 0; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.15rem; }
+    .metric-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; color: var(--good); }
+    .metric-label { font-size: 0.9rem; color: var(--muted); margin-top: 0.25rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
+    .card.pos { border-left: 4px solid var(--good); }
+    .card.neg { border-left: 4px solid var(--bad); }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.95rem; }
+    th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: var(--surface); }
+    code { font-family: var(--mono); background: var(--surface); padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.88em; }
+    footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="brand" href="index.html">OMP Governance Scaffold</a>
+      <div class="links">
+        <a href="compaction-sieve.md">Compaction Sieve</a>
+        <a href="attractors.md">Attractors</a>
+        <a href="projects.md">Projects</a>
+        <a href="theory.md">Theory</a>
+        <a href="influences.md">Influences</a>
+        <a href="llms.txt">llms.txt</a>
+      </div>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <span class="badge">Apache License 2.0 &middot; Strata 0.1.68 &amp; OMP Control Plane</span>
+      <h1>Multi-Hour Autonomous Coding Without Attention Drift</h1>
+      <p>
+        Most AI workflows chase massive context windows to handle complex software builds. On local hardware,
+        bloated context windows dilute model focus and slow down generation. This open-source scaffold proves
+        the opposite: pairing a tight <strong>43k-token working runway</strong> (~150&ndash;172 KB) with a frozen
+        governance spine and deterministic pre-compaction guards sustains hours of error-free coding.
+      </p>
+      <div class="metrics">
+        <div class="card">
+          <div class="metric-val">1,704 tok</div>
+          <div class="metric-label">Frozen governance spine pinned at Position Zero</div>
+        </div>
+        <div class="card">
+          <div class="metric-val">98.7%</div>
+          <div class="metric-label">Median prefix-cache reuse across multi-hour sessions</div>
+        </div>
+        <div class="card">
+          <div class="metric-val">54&ndash;74.7 t/s</div>
+          <div class="metric-label">Local 4-bit MoE decode speed (11/12 MTP draft acceptance)</div>
+        </div>
+        <div class="card">
+          <div class="metric-val">584 / 584</div>
+          <div class="metric-label">Passing verification checks across spine, fact-store &amp; runtime</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Why Signal-to-Noise Ratio Beats Giant Context Windows</h2>
+      <p>
+        Every token in an AI model's <strong>context window</strong> (active working memory) competes for a fixed
+        100% pool of attention. When thousands of old terminal logs accumulate, <strong>softmax dilution</strong>
+        (the spreading of focus across irrelevant background text) weakens the model's adherence to your rules.
+      </p>
+      <p>
+        Keeping the active window bounded preserves a high <strong>attention signal-to-noise ratio (SNR)</strong>.
+        On 4-bit quantized local models, this keeps the <strong>logit margin</strong> (the confidence gap favoring
+        exact code syntax over near-miss guesses) safely above the <strong>quantization noise floor</strong>.
+      </p>
+    </section>
+
+    <section>
+      <h2>Positive &amp; Negative Attractors</h2>
+      <div class="grid-2">
+        <div class="card pos">
+          <h3>Positive Attractors (Stable Basins)</h3>
+          <ul>
+            <li><strong>Focal Attention Basin:</strong> A 65,536-token ceiling with ~43k working room keeps instructions sharp.</li>
+            <li><strong>Sieve-Guarded Resets (S1&ndash;S4):</strong> Extracts active tasks, read-only locks, and exact CLI flags before history compresses.</li>
+            <li><strong>External Oracle Grounding:</strong> Verifies code against independent tools like <code>ffmpeg</code> and two-sided mutant tests.</li>
+            <li><strong>Receipted Epoch Chains:</strong> Binds milestones to cryptographic file hashes so legitimate plan updates never drift.</li>
+          </ul>
+        </div>
+        <div class="card neg">
+          <h3>Negative Attractors (Intercepted Traps)</h3>
+          <ul>
+            <li><strong>Secular Drift:</strong> Quiet loss of "DO NOT" rules across dozens of repeated memory summaries.</li>
+            <li><strong>Flag-Drift Spin Loops:</strong> Repeating a broken CLI flag typo until commands time out.</li>
+            <li><strong>Self-Certifying Tests:</strong> Broken code passing its own flawed test suite because both share the same bug.</li>
+            <li><strong>False-Green Listeners:</strong> Old daemons holding a port after a failed restart check.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Core Terminology Reference</h2>
+      <table>
+        <thead>
+          <tr><th>Term</th><th>Plain-English Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Attention Signal-to-Noise Ratio (SNR)</strong></td><td>The balance between critical rules (signal) and stale chat clutter (noise) inside active memory.</td></tr>
+          <tr><td><strong>Softmax Dilution</strong></td><td>The fading of instruction focus as thousands of older tokens compete for a fixed 100% attention budget.</td></tr>
+          <tr><td><strong>Logit Margin</strong></td><td>The confidence gap separating the exact right next token from a plausible wrong token.</td></tr>
+          <tr><td><strong>Quantization Noise Floor</strong></td><td>Small rounding variances introduced by 4-bit model compression (<code>NVFP4</code> / <code>Q4</code>).</td></tr>
+          <tr><td><strong>Pre-Compaction Sieve</strong></td><td>A lightweight script (<code>&le;137</code> tokens active, <code>0 B</code> idle) that extracts goals, locks, and flags before history compresses.</td></tr>
+          <tr><td><strong>External Oracle</strong></td><td>An independent, trusted program (like <code>ffmpeg</code>) used to verify AI-written code against ground truth.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <footer>
+    Published under the <a href="https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/LICENSE">Apache License 2.0</a> &middot; <a href="https://github.com/spoon-t8i/omp-governance-scaffold">View Source on GitHub</a>
+  </footer>
+</body>
+</html>

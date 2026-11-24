@@ -1,0 +1,11 @@
+OMP Governance Scaffold & Compaction Sieve Armor
+Copyright 2026 spoon-t8i (spoon-t8i projects)
+
+This product includes software and architectural documentation developed for
+local autonomous coding workflows under the Apache License, Version 2.0.
+
+Upstream & Community Acknowledgments:
+- Oh-My-Pi (OMP) CLI agent runtime and hook architecture
+- Strata local MoE inference engine and Blackwell sm_120 runtime optimizations
+- Qwen 3.8 Flash-Next open-weight Mixture-of-Experts model family
+- FFmpeg (libavformat / libavcodec) used as an external ground-truth audio oracle
