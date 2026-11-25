@@ -59,7 +59,7 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 
 ## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine
 
-*Single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
+*Synthesized in ~1 hour from multiple prior local-AI life-simulator iterations into a single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
 
 ### Tier 1: The High-Level Picture (Plain-English Intuition)
 
