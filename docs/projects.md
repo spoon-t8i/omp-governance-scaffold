@@ -54,3 +54,38 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 * **SandGame Cellular Automata Simulator:** Orchestrated a **6-hour autonomous build** (`G0–G8` gates) yielding a zero-leak physics simulator running at **0.04 ms/step** against a `20.0 ms` frame budget.
 * **Mandelbrot & Julia Set Explorer:** Wiped the model's entire active memory after building the Mandelbrot viewer, cold-booted from `.omp/STATE.md`, and added an interactive Julia Set toggle verified by cross-orbit math assertions (`24/24` checks, zero regressions).
 * **Digital Spaceport Arcade Suite:** Built a multi-file web arcade (Landing Page, Asteroids, Pong, Snake) across isolated cold-boot phases (`130+` cumulative logic and browser QA assertions).
+
+---
+
+## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine
+
+*Single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
+
+### Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Most artificial-life simulations only care about the creatures swimming around on screen right now. **Strata v17** is really about **the mud at the bottom**.
+
+As four guilds of organisms (producers, herbivores, predators, and scavengers) evolve, form colonies, and die in a deep-water column, their remains sink into a scrolling rock core on the right side of the screen. Just like real paleontology, the rock record is **systematically biased**: when oxygen is high and scavengers are hungry, dead organisms get eaten before they can fossilize—meaning a thriving, well-oxygenated ocean actually leaves behind a *poorer* fossil record than a stagnant, low-oxygen one. You can click any ancient rock layer, inspect its preserved DNA, and **resurrect extinct species** back into a modern ecosystem they never evolved in.
+
+---
+
+### Tier 2: Systems Engineering, SoA Memory Layout & Taphonomic Invariants
+
+#### 1. Zero-Allocation Data-Oriented Runtime
+* **Structure-of-Arrays (`Float32Array`):** The entire biosphere (`MAX_CELLS = 2,600` slots, `free-list deadPool`) lives inside a contiguous `Float32Array(2600 * 48)` with zero heap object allocations inside the `120 Hz` fixed-timestep hot loop (`MAX_TICKS_PER_FRAME = 8`, `IGNITE` 900-tick headless warm-up).
+* **Spatial & Environmental Grids:** `34 px` spatial hash buckets (`GRID_SIZE`) pair with a `6 px` 6-lane water column (`light` with standing-crop self-shading, slow chemostat `food`, `O2` relaxation + bloom overshoot, `waste`/`pheromone` 4-neighbour diffusion, 4-frequency travelling `temp`/`pH` waves, and a `3%` EMA global atmosphere).
+* **Behaviour as Genome:** Steering is not hardcoded state machines—16 heritable genes plus 8 signed chemotaxis/neighbour sensory weights (`w:food`, `waste`, `pher`, `pred`, `prey`, `corp`, `O2`, `light`) drive force integration (`damp = 0.86`), colony damage dilution (`computeClusterSizes`, up to 5 bonded nodes), and `v17.1` asymmetric pursuit (`speedCap = 1.5 * (0.70 + 0.45 * spd)` for predators vs. `1.5` global cap for prey, calibrated across `4 seeds * 4,206 ticks * 11 settings`).
+
+#### 2. The Taphonomic Preservation Filter & Portable Rock Core
+Every `120 / layersPerSec` ticks, `closeLayer` commits a time-slice bed (`MAX_LAYERS = 360`, oldest beds fused via tick-weighted compaction `compactOldest`) containing trophic census, climate/atmosphere means, extinction stamps, anomaly markers (asteroid, ice age, anoxia, mass extinction), and up to `8` reservoir-sampled fossil genomes gated by the taphonomic preservation equation:
+
+```text
+pres = clamp01(0.10 + 0.55 * (1 - O2) - 0.30 * min(3, scavengerDensity))
+```
+
+* **Closed-Loop De-Extinction (`inspectLayer` / `resurrect(k, f)`):** Extracts a fossil genome vector from any historical bed and spawns an asexual-capable founder (`>215` fission threshold) into the live water column (`DE-EXTINCTED sp#N ... X ticks dead -> new sp#M`).
+* **Portable Core Serialization (`exportCore` / `importCore`):** Serializes `{v:'strata-17', seed, tick, atmoO2, layers, extinctions[-400:]}` to Base64 so stratigraphic cores can be archived, diffed, and re-imported across sessions.
+
+#### 3. Measured Telemetry & Honest Model Boundaries
+* **Measured Performance (`45 s` wall-clock run):** `6,694` ticks (`~148 ticks/s`, `~144 fps`), `436` living cells (`159` herbivores, `61` predators, `190` scavengers, `108` corpses), `102` species across `27` generations, `19.3%` atmospheric `O2`, and `335` stratigraphic beds (`328` extinctions).
+* **Explicit Scope Limits:** Arbitrary non-SI units; drag (`0.86`) substitutes for Navier-Stokes fluid viscosity; temperature and `pH` act as niche-mismatch cost penalties rather than Arrhenius metabolic kinetics; `aggr` remains a drift-only latent gene (`2` write occurrences, `0` reads); and the `8`-fossil reservoir sample is intentionally lossy by design.
