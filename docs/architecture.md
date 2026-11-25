@@ -95,3 +95,14 @@ downside -> action + confidence -> disconfirmers, next check; zero-mutation firs
 second-order effects, false binaries. Code: tempfile fixtures; rows in == rows out.
 
 ```
+
+---
+
+## 3. Why Oh-My-Pi (OMP): Accepting Rust Runtime Weight for Compaction & Hash Determinism
+
+Choosing **Oh-My-Pi (OMP)** as the agent runtime is a deliberate engineering trade-off. Because OMP bundles a compiled Rust native layer (`brush` in-process shell, native parsers, and a broad default tool suite), its out-of-the-box binary footprint and default tool schemas are heavier than minimal Python wrappers.
+
+We trim that excess surface area at startup (`--no-prewalk`, restricting exposed tools to `read`, `bash`, and `write`) while keeping the two core OMP capabilities that make deterministic governance possible:
+
+1. **First-Class Compaction Lifecycle Hooks (`before_compact`):** OMP exposes clean pre-compaction interception points right before history compresses (`55K -> 34K` tokens). This allows our `S1–S4` Pre-Compaction Sieve (`pre_compact_sieve.py`) to inject exact active directives, read-only directory locks, and hyphen-exact CLI flags without modifying upstream runtime binaries.
+2. **Native File-Hashing & Anchor Primitives (`hashline` / SHA-256 Receipts):** OMP's native Rust-backed hashing and line-anchored editing primitives eliminate whole-file rewrite drift on 4-bit quantized models (`NVFP4`) and bind state milestones directly to verifiable disk hashes (`H1`/`H2` receipt chains).
