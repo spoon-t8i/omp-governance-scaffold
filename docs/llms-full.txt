@@ -8,6 +8,12 @@ FILE: docs/architecture.md
 
 # Inside the OMP Governance Engine (`src/`)
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Think of an AI coding assistant like a brilliant but forgetful contractor working on a complex house renovation. If you only leave sticky notes on the wall, the contractor eventually loses track of which rooms are off-limits and starts guessing measurements. Instead of writing longer sticky notes, we put a **laminated one-page checklist** at the top of the clipboard and hire an **independent building inspector** (automated Python/Bash checks) who measures every wall with a tape measure before signing off.
+
+
+
 *Licensed under the Apache License 2.0. Browse the complete source tree in [`src/`](https://github.com/spoon-t8i/omp-governance-scaffold/tree/main/src).*
 
 Unlike prompt-only agent wrappers, this scaffold separates **probabilistic reasoning** (handled by the local model) from **deterministic verification** (enforced by standalone Python/Bash gates and lifecycle hooks).
@@ -91,6 +97,12 @@ FILE: docs/compaction-sieve.md
 
 # Compaction Sieve Armor & Signal-to-Noise Engineering
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+When a long coding conversation gets too full, the AI has to summarize old messages to free up memory—just like boiling down a big pot of soup. Normally, summarizing blurs out tiny but vital details like an exact command-line flag or a "do not touch this folder" warning. The **Pre-Compaction Sieve** works like a fine mesh strainer: right before the summary happens, it catches those exact critical facts and pins them safely at the top of the fresh memory window.
+
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Most AI coding setups try to solve multi-hour tasks by expanding the **context window** (the total pool of text, measured in tokens, that an AI model can actively read at once). On local hardware, giant context windows often backfire. As logs accumulate, attention degrades, speed drops, and the model forgets critical rules.
@@ -154,6 +166,12 @@ FILE: docs/projects.md
 
 # Projects Showcase: Three Months of Receipt-Verified Builds
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Theory only matters if it survives real-world stress tests. Instead of testing this governance system on toy puzzles, we put it through multi-hour engineering marathons—building playable 3D browser games, surgical audio editors, and custom hardware benchmarks from scratch—to prove the AI can work for hours without breaking its own code or inventing fake test results.
+
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** governance scaffold across seven software and systems engineering campaigns on a local Linux workstation (`Strata 0.1.68` + `Qwen 3.8 Flash-Next NVFP4`, `584/584` combined harness checks).
@@ -180,6 +198,12 @@ FILE: docs/theory.md
 
 # Conceptual Notes: Multi-Timescale Control & Conjectural Extensions
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+If you give an AI a giant wall of rules at the start of every task, it spends half its brainpower just re-reading the rulebook and still forgets instructions hours later. Instead, if you keep the core rulebook tiny and unchanging, write the current to-do list on a single index card on disk, and check every finished step with an automated test, the AI stays fast, focused, and reliable across hours of work.
+
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 The core of this repository is practical software engineering: keeping local AI coding loops fast, deterministic, and drift-free over multi-hour runs. This page offers a high-level look at the broader **multi-timescale control** ideas behind the scaffold, along with a few clearly labeled **conjectures** (`[CONJECTURAL]`).
@@ -199,6 +223,12 @@ FILE: docs/influences.md
 [← Back to Home](index.html)
 
 # Hardware, Software & Engineering Lineage
+
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Good engineering rarely comes from reinventing the wheel—it comes from borrowing battle-tested ideas from aviation checklists, database crash recovery, and factory quality control, then adapting them to local AI hardware. Below are the core books, systems, and hardware design principles that shaped this scaffold.
+
+
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 

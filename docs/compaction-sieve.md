@@ -6,6 +6,19 @@ layout: default
 
 # Compaction Sieve Armor & Signal-to-Noise Engineering
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+When a long coding conversation gets too full, the AI has to summarize old messages to free up memory—just like boiling down a big pot of soup. Normally, summarizing blurs out tiny but vital details like an exact command-line flag or a "do not touch this folder" warning. The **Pre-Compaction Sieve** works like a fine mesh strainer: right before the summary happens, it catches those exact critical facts and pins them safely at the top of the fresh memory window.
+
+---
+
+## Tier 2: Systems Engineering & `S1–S4` Extraction Invariants
+
+Context compaction (`55K -> 34K` tokens) acts as a lossy low-pass filter that erodes high-entropy lexical invariants (hyphen-exact CLI flags, read-only mount locks, active directives, and retry-loop tripwires). Hooked into OMP's `before_compact` lifecycle event, `pre_compact_sieve.py` performs deterministic `S1–S4` extraction with **`0 B` idle overhead** on clean turns and **`<= 137` tokens** of injected post-compaction armor on active turns.
+
+---
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Most AI coding setups try to solve multi-hour tasks by expanding the **context window** (the total pool of text, measured in tokens, that an AI model can actively read at once). On local hardware, giant context windows often backfire. As logs accumulate, attention degrades, speed drops, and the model forgets critical rules.

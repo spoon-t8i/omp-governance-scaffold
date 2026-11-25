@@ -6,6 +6,19 @@ layout: default
 
 # Projects Showcase: Three Months of Receipt-Verified Builds
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Theory only matters if it survives real-world stress tests. Instead of testing this governance system on toy puzzles, we put it through multi-hour engineering marathons—building playable 3D browser games, surgical audio editors, and custom hardware benchmarks from scratch—to prove the AI can work for hours without breaking its own code or inventing fake test results.
+
+---
+
+## Tier 2: Systems Engineering & Closed-Loop Empirical Validation
+
+Each project below serves as an adversarial, multi-hour integration harness measuring **working runway stability (`~43k` tokens)**, **prefix-cache hit rates (`98.7%`)**, and **external oracle parity** (`ffmpeg` bit-exact `max|d| = 0`, automated WebGL2/Canvas2D visual audits, and `584/584` deterministic gate checks) under sustained autonomous execution.
+
+---
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** governance scaffold across seven software and systems engineering campaigns on a local Linux workstation (`Strata 0.1.68` + `Qwen 3.8 Flash-Next NVFP4`, `584/584` combined harness checks).

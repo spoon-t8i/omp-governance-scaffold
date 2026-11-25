@@ -5,6 +5,19 @@ title: OMP Architecture & Core Source
 
 # Inside the OMP Governance Engine (`src/`)
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Think of an AI coding assistant like a brilliant but forgetful contractor working on a complex house renovation. If you only leave sticky notes on the wall, the contractor eventually loses track of which rooms are off-limits and starts guessing measurements. Instead of writing longer sticky notes, we put a **laminated one-page checklist** at the top of the clipboard and hire an **independent building inspector** (automated Python/Bash checks) who measures every wall with a tape measure before signing off.
+
+---
+
+## Tier 2: Systems Engineering & Deterministic Control Loop
+
+At the systems level, this architecture decouples **probabilistic token generation** (executed by a quantized local model) from **deterministic state verification** (enforced by standalone exit-code gates and lifecycle hooks). Position Zero is frozen at `1,704` tokens (`AGENTS.md` + `CORE.md` + `STATE.md`) to maximize prefix-cache reuse (`98.7%` median), while external scripts enforce hard invariants (`RC=0`) across file mutations, closure receipts, and regime shifts.
+
+---
+
+
 *Licensed under the Apache License 2.0. Browse the complete source tree in [`src/`](https://github.com/spoon-t8i/omp-governance-scaffold/tree/main/src).*
 
 Unlike prompt-only agent wrappers, this scaffold separates **probabilistic reasoning** (handled by the local model) from **deterministic verification** (enforced by standalone Python/Bash gates and lifecycle hooks).

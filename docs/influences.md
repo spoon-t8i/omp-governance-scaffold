@@ -6,6 +6,19 @@ layout: default
 
 # Hardware, Software & Engineering Lineage
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Good engineering rarely comes from reinventing the wheel—it comes from borrowing battle-tested ideas from aviation checklists, database crash recovery, and factory quality control, then adapting them to local AI hardware. Below are the core books, systems, and hardware design principles that shaped this scaffold.
+
+---
+
+## Tier 2: Systems Engineering & Architectural Lineage
+
+This scaffold synthesizes patterns from **write-ahead logging and crash-consistent state machines**, **control-theory feedback loops**, **speculative decoding / prefix-cache memory hierarchy optimization**, and **heterogeneous multi-GPU hardware partitioning**.
+
+---
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Open-source local AI engineering stands on the shoulders of kernel developers, compiler authors, hardware tinkerers, and systems researchers. This page documents the technical influences and community builders that shaped our **Oh-My-Pi (OMP)** governance scaffold and workstation setup.

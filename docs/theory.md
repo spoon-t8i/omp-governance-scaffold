@@ -6,6 +6,19 @@ layout: default
 
 # Conceptual Notes: Multi-Timescale Control & Conjectural Extensions
 
+## Tier 1: The High-Level Picture (Plain-English Intuition)
+
+If you give an AI a giant wall of rules at the start of every task, it spends half its brainpower just re-reading the rulebook and still forgets instructions hours later. Instead, if you keep the core rulebook tiny and unchanging, write the current to-do list on a single index card on disk, and check every finished step with an automated test, the AI stays fast, focused, and reliable across hours of work.
+
+---
+
+## Tier 2: Systems Engineering & Control-Theoretic Foundations
+
+Long-horizon local agent stability is modeled as a **closed-loop feedback system** with fixed Position-Zero boundary conditions (`tau_0` frozen spine), externalized Markovian state (`tau_1` disk anchor), and event-driven anomaly interruption (`tau_2` surprise sensor). Decoupling semantic proposal from deterministic `RC=0` verification bounds drift without inflating per-turn context overhead.
+
+---
+
+
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 The core of this repository is practical software engineering: keeping local AI coding loops fast, deterministic, and drift-free over multi-hour runs. This page offers a high-level look at the broader **multi-timescale control** ideas behind the scaffold, along with a few clearly labeled **conjectures** (`[CONJECTURAL]`).
