@@ -1,0 +1,212 @@
+# OMP Governance Scaffold — Complete Documentation Bundle (llms-full.txt)
+
+
+================================================================================
+FILE: docs/architecture.md
+================================================================================
+
+
+# Inside the OMP Governance Engine (`src/`)
+
+*Licensed under the Apache License 2.0. Browse the complete source tree in [`src/`](https://github.com/spoon-t8i/omp-governance-scaffold/tree/main/src).*
+
+Unlike prompt-only agent wrappers, this scaffold separates **probabilistic reasoning** (handled by the local model) from **deterministic verification** (enforced by standalone Python/Bash gates and lifecycle hooks).
+
+
+## 2. Live Frozen Spine (`src/spine/CORE.md`)
+
+Below is the exact sanitized governance spine pinned at Position Zero on every turn:
+
+```markdown
+Rule 0 (OPERATOR OVERRIDE — HIGHEST PRECEDENCE): On "stop", "bailout", "status only", "existing info only", "no more tools", or a question not asking for verification/spine changes, IMMEDIATELY emit ZERO tool calls (no tool use), skip verification/closure gates, answer from existing context (label unverified items [UNVERIFIED/INTERIM]) — overrides all rules.
+
+# OMP vNext — CORE
+
+Mission: a project must survive this session's loss — reasoning: model; state: files; continuity:
+tooling; truth > verifiable claim.
+
+## Claims
+Tag every claim: [A] measured, [B] source, [C] inference, [D] speculation, [E] hypothesis,
+[F] unknown+validation. C-F never as A-B; A/B need receipts, C-F the settling check; never invent a
+citation; uncheckable: name the check.
+`entail_check.py --claims` audits each tag against the run's receipts.
+
+## Engineering
+Correctness, then six-month maintainability: delete dead weight, boring design over abstraction.
+Execution kernel: disk beats recap (`git status -sb`); `set -euo pipefail`,
+never mask a pipeline (`|| true`, `| head`, `| tail`); write only the explicit scope, scratch in /tmp.
+
+## Artifacts
+Injected: AGENTS.md, CORE.md, STATE.md (cap 780 tok, NOTE above 650) — price with --all-costs before
+cutting. PERM.md indexes durable records, <project>/perm-record.md each closeout; EVENTS.md and the
+vault on demand.
+
+## Enforcement
+Rules live in tools, not prose: `--help` = flags, docstring = contract,
+`harness/<tool>_harness.py` = test; a script is a gate by declaring `# spine-gate: ARGS` in its first
+40 lines. spine_check.py alone grades the spine: exit 0 = clean, a differing closure hash = stale; fix
+the artifact or the check, never prose.
+plan_check.py: a node closes only on a gate that ran, passed and is newer than its code.
+ownership.py: which authority (PLANNING DESIGN CLOSURE STATE EXECUTION, LOCAL/ADVISORY) crossed
+reasoning into procedure; read-only. checkpoint.sh: commit spine + projects before risky work, nothing
+until revalidation and every sieve pass. rehydrate.py: resume a project — tree, closed nodes, ready
+gate, failing attempts, dead branch, spine price. edit_file.py: multi-hunk edits, validated, atomic.
+query_expand.py deterministic retrieval feeding `read`: concepts from identifier splits,
+suffix stems and spine aliases, scored by correlated term density and proximity into top-K
+path:N-M ranges; --fact-boost lifts the window a live fact pins so a dead claim cannot steer
+`read`.
+impact_analysis.py: what a change reaches, smallest gate set that proves it.
+num_provenance.py: audited numbers bind to a declared evidence file or hard-fail.
+fact_store.py: claims pin the SHA-256 of the slice that makes them true; drift demotes; only a --repin
+gate run restores. pre_compact_sieve.py: re-read list before a collapse.
+compaction_clock.py: which clock fired. surprise_check.py: zero-token disk probe, wakes with
+[L2B-SURPRISE-INTERRUPT]; governance probes fail open, never stall a compaction or commit.
+
+## Verification
+Non-trivial change: run the thing; tool output is evidence, reasoning is not. Never bypass a gate — run
+its own CLI, never an imported module or function. Two-sided controls: positive passes, negative fails.
+Bind every numeric status to a runtime symbol plus one orthogonal check; a failed probe forks
+`modules/FAULT_ISOLATION.md`, never a new launcher. Every STATE.md project has a runnable harness; a bug
+keeps its failing-before/passing-after test; tests assert consumer-visible boundaries and error paths,
+never wiring or tautologies.
+
+## Recovery
+Session can die: `tools/checkpoint.sh` before risky work, `tools/rehydrate.py` after restart; files over
+memory. Repeated failure, unknown cause: `modules/FAULT_ISOLATION.md`.
+
+## Ironclad Insight Forge v2.0
+Truth > clarity > insight > usefulness > brevity. Abduction: H1/H2/H3 on fit, simplicity, testability,
+downside -> action + confidence -> disconfirmers, next check; zero-mutation first. Hidden constraints,
+second-order effects, false binaries. Code: tempfile fixtures; rows in == rows out.
+
+```
+
+
+================================================================================
+FILE: docs/compaction-sieve.md
+================================================================================
+
+
+[← Back to Home](index.html)
+
+# Compaction Sieve Armor & Signal-to-Noise Engineering
+
+*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
+
+Most AI coding setups try to solve multi-hour tasks by expanding the **context window** (the total pool of text, measured in tokens, that an AI model can actively read at once). On local hardware, giant context windows often backfire. As logs accumulate, attention degrades, speed drops, and the model forgets critical rules.
+
+This page explains how our **Oh-My-Pi (OMP)** scaffold solves multi-hour autonomy using a tight **65,536-token ceiling** (~43,000 tokens of active working room) paired with deterministic **pre-compaction sieve armor**.
+
+
+## 2. How the 65K Context Budget Is Partitioned
+
+| Context Partition | Token Budget | Role & Persistence Rule |
+| :--- | :--- | :--- |
+| **Frozen Governance Spine** | **1,704 tokens** | Pinned at Position Zero (`AGENTS.md`, `CORE.md`, `STATE.md`). Never evicted. |
+| **Minimal Tool Schemas** | **~4,500 tokens** | Exposes only `read`, `bash`, and `write` (`--no-prewalk`), cutting 30+ unused IDE tools. |
+| **Active Working Runway** | **~43,000 tokens** | Holds the current file slice, active test output, and recent reasoning (~150–172 KB). |
+| **Compaction Safety Buffer** | **~16,000 tokens** | Headroom reserved so automatic summarization triggers cleanly around ~49.5k–55k tokens. |
+
+Keeping the top of the prompt identical across turns achieves **98.7% median prefix-cache reuse** (reusing pre-computed math for the static prompt header instead of recalculating it on every step).
+
+
+================================================================================
+FILE: docs/attractors.md
+================================================================================
+
+
+[← Back to Home](index.html)
+
+# Positive & Negative Attractors in Autonomous Coding Loops
+
+*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
+
+An autonomous AI coding loop behaves like a dynamical control system. Over multi-hour sessions, the loop settles into repeating patterns called **attractors** (stable states that pull system behavior toward them). Without structural guardrails, local models drift into **negative attractors**—repeating traps where small mistakes compound into session failure.
+
+
+## 2. Negative Attractors (Intercepted Failure Traps)
+
+| Negative Attractor | Failure Pattern | Real Incident Receipt | Hard Circuit Breaker |
+| :--- | :--- | :--- | :--- |
+| **Boiling-Frog Secular Drift** | Tiny rounding shifts and quiet drops of `"DO NOT"` rules pass single resets yet corrupt state over 25+ resets. | Unconstrained summaries suffered **100%** silent drift; step-by-step delta checks still leaked **37.5%** over 25 resets. | Cryptographic epoch chains plus `entail_check.py` binding every summary number to a disk receipt. |
+| **Flag-Drift Spin Loop** | Missing a hyphen in a command flag triggers repeated timeouts while the model guesses unrelated causes. | Typing `--selftest` instead of `--self-test` 6 times launched hidden GUI windows until `EXIT=124` timeout. | `S3` `PINNED-FLAGS` (hyphen-exact) plus `S4` `SPIN-LOOP-TRIPWIRE` (3-Probe Bailout + source read). |
+| **Self-Certifying Test Illusion** | Broken code passes its own test suite because the test generator shares the exact same bug. | A legacy audio decoder passed `121/121` checks while playing loop flags as audio because its mirror encoder shared the flaw. | Mandatory external ground-truth oracles (`ffmpeg`) and two-sided mutant tests. |
+| **False-Green Listener Trap** | A restart command exits non-zero while an old daemon still holds port `:8080`, tricking readiness checks into passing immediately. | An A/B script passed an invalid `--no-pull` flag (`RC=2`), hit an existing listener (`PID 732182`) in `0s`, and reported a false config reload. | Unmasked exit-code gating (`allow_abbrev=False`), process `STIME` binding, and `EXIT` trap verification. |
+
+================================================================================
+FILE: docs/workstation.md
+================================================================================
+
+
+
+## 4. Why CachyOS (`7.3.5-2-cachyos`) Powers the Control Plane
+
+* **Tuned Virtual Memory & MoE Streaming:** CachyOS's `sysctl` dirty-ratio tuning, `zram` memory compression, and `madvise` huge-page defaults keep `94 GiB` of DDR4 host RAM responsive while streaming cold Mixture-of-Experts weights across the dual-`x8` PCIe bus.
+* **Unified Multi-Vendor GPU Support:** Prebuilt `NVIDIA 620.73.04` modules, `Mesa 26.3.1`, and `cachyos-drm-awaiter` coordinate headless Blackwell (`GB206`) CUDA initialization alongside Intel Arc (`DG2`) Wayland compositing cleanly on every boot.
+* **Btrfs Snapshot Hygiene:** Copy-on-write system snapshots provide zero-downtime rollback protection across bleeding-edge kernel and inference engine updates.
+
+================================================================================
+FILE: docs/projects.md
+================================================================================
+
+
+[← Back to Home](index.html)
+
+# Projects Showcase: Three Months of Receipt-Verified Builds
+
+*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
+
+Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** governance scaffold across seven software and systems engineering campaigns on a local Linux workstation (`Strata 0.1.68` + `Qwen 3.8 Flash-Next NVFP4`, `584/584` combined harness checks).
+
+
+## 2. AMBER_ASCII AT-Stream v2 & WebGL2 Fractal Audits (Oct – Nov 2026)
+
+* **60 Hz Terminal 3D Raymarching (`AMBER_ASCII`):** Rendered monochrome and phosphor-palette 3D scenes at **40–60+ FPS** with sub-3ms input latency (`20/20` plan gates, `84/0` renderer checks, `97/0` receipt bindings).
+* **WebGL2 / Mandelbulb / Strange Attractor GPU Verification:** Audited a 4,246-line zero-dependency WebGL2/Canvas2D generative engine (`30` modules including `mandelbrot`, `julia`, `newton`, `mandelbulb`, and `clifford`/`lorenz` attractors) running at **139 FPS** on our discrete Intel Arc A310 display GPU without touching compute VRAM.
+
+
+## 4. Cold-Boot KV-Wipe Benchmarks (Aug – Sep 2026)
+
+* **SandGame Cellular Automata Simulator:** Orchestrated a **6-hour autonomous build** (`G0–G8` gates) yielding a zero-leak physics simulator running at **0.04 ms/step** against a `20.0 ms` frame budget.
+* **Mandelbrot & Julia Set Explorer:** Wiped the model's entire active memory after building the Mandelbrot viewer, cold-booted from `.omp/STATE.md`, and added an interactive Julia Set toggle verified by cross-orbit math assertions (`24/24` checks, zero regressions).
+* **Digital Spaceport Arcade Suite:** Built a multi-file web arcade (Landing Page, Asteroids, Pong, Snake) across isolated cold-boot phases (`130+` cumulative logic and browser QA assertions).
+
+================================================================================
+FILE: docs/theory.md
+================================================================================
+
+
+[← Back to Home](index.html)
+
+# Conceptual Notes: Multi-Timescale Control & Conjectural Extensions
+
+*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
+
+The core of this repository is practical software engineering: keeping local AI coding loops fast, deterministic, and drift-free over multi-hour runs. This page offers a high-level look at the broader **multi-timescale control** ideas behind the scaffold, along with a few clearly labeled **conjectures** (`[CONJECTURAL]`).
+
+
+## 2. High-Level Conjectural Extensions `[CONJECTURAL]`
+
+* **Cosmic Observability & The Fermi Paradox `[CONJECTURAL]`:** In our signal simulations, whenever an emitter's internal processing clock diverges from a detector's observation window, structured signals blend into background noise. Conjecturally, mature civilizations may decouple internal computation from high-energy waste—meaning cosmic silence could reflect efficient multi-timescale maturity rather than extinction.
+* **Nested Rhythms & Consciousness `[CONJECTURAL]`:** Empirical neuroscience shows that human brains partition activity across fast gamma waves (`30–100 Hz`), medium theta/alpha rhythms (`4–12 Hz`), and slow delta waves (`<1 Hz`). Conjecturally, conscious awareness acts much like an impedance-matched governance seam—keeping fast sensory reality aligned with slow personal identity without locking up.
+* **Prior Scientific Lineage:** Related multi-timescale principles appear in W. Ross Ashby’s cybernetics (*Law of Requisite Variety*), György Buzsáki’s neural oscillation hierarchies, Bernard Baars’ *Global Workspace Theory*, and modern *Nested Learning* architectures in AI.
+
+================================================================================
+FILE: docs/influences.md
+================================================================================
+
+
+[← Back to Home](index.html)
+
+# Hardware, Software & Engineering Lineage
+
+*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
+
+Open-source local AI engineering stands on the shoulders of kernel developers, compiler authors, hardware tinkerers, and systems researchers. This page documents the technical influences and community builders that shaped our **Oh-My-Pi (OMP)** governance scaffold and workstation setup.
+
+
+## 2. Tri-GPU Workstation Architecture & Linux Systems Discipline
+
+* **Display vs. Compute Isolation (Intel Arc A310 + Dual RTX 5060 Ti):** Offloading Wayland/KDE desktop compositing onto a dedicated 4 GB **Intel Arc A310** leaves 100% of our **32 GB GDDR7** dual-GPU pool dedicated to MoE experts, KV cache, and automated WebGL2 visual QA.
+* **CachyOS & Btrfs Snapshot Hygiene:** High-frequency kernel scheduling and copy-on-write snapshot rollbacks allowed rapid compiler upgrades and non-destructive testing across multi-hour engineering runs.
+
