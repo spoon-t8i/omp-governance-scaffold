@@ -12,12 +12,37 @@ FILE: docs/architecture.md
 
 Think of an AI coding assistant like a brilliant but forgetful contractor working on a complex house renovation. If you only leave sticky notes on the wall, the contractor eventually loses track of which rooms are off-limits and starts guessing measurements. Instead of writing longer sticky notes, we put a **laminated one-page checklist** at the top of the clipboard and hire an **independent building inspector** (automated Python/Bash checks) who measures every wall with a tape measure before signing off.
 
+---
+
+## Tier 2: Systems Engineering & Deterministic Control Loop
+
+At the systems level, this architecture decouples **probabilistic token generation** (executed by a quantized local model) from **deterministic state verification** (enforced by standalone exit-code gates and lifecycle hooks). Position Zero is frozen at `1,704` tokens (`AGENTS.md` + `CORE.md` + `STATE.md`) to maximize prefix-cache reuse (`98.7%` median), while external scripts enforce hard invariants (`RC=0`) across file mutations, closure receipts, and regime shifts.
+
+---
 
 
 *Licensed under the Apache License 2.0. Browse the complete source tree in [`src/`](https://github.com/spoon-t8i/omp-governance-scaffold/tree/main/src).*
 
 Unlike prompt-only agent wrappers, this scaffold separates **probabilistic reasoning** (handled by the local model) from **deterministic verification** (enforced by standalone Python/Bash gates and lifecycle hooks).
 
+---
+
+## 1. Repository Source Map
+
+| Module Path | Role in the Control Loop |
+| :--- | :--- |
+| [`src/spine/AGENTS.md`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/spine/AGENTS.md) | Minimal root entry pointer (`25 tokens`) loaded at Position Zero. |
+| [`src/spine/CORE.md`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/spine/CORE.md) | Frozen governance constitution (`1,033 tokens`): epistemic tags (`[A]`–`[F]`), Seam Laws, and tool contracts. |
+| [`src/spine/STATE.template.md`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/spine/STATE.template.md) | 8-field disk state anchor (`<= 650 tokens`) rehydrated across memory resets. |
+| [`src/hooks/pre_compact_sieve.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/hooks/pre_compact_sieve.py) | `S1–S4` Pre-Compaction Sieve (`0 B` idle, `<= 137` tokens active) preserving tasks, locks, flags, and loop tripwires. |
+| [`src/gates/spine_check.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/gates/spine_check.py) | Enforces token budgets, anchor resolution, and closure digests (`RC=0` required). |
+| [`src/gates/entail_check.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/gates/entail_check.py) | Audits closed records and manifests to verify every numeric claim maps to a physical receipt. |
+| [`src/gates/fact_store.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/gates/fact_store.py) | SQLite/FTS5 long-horizon fact store with regime-pin demotion (`290/290` harness checks). |
+| [`src/gates/regime_sensor.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/gates/regime_sensor.py) | Hardware and inference-engine fingerprint sensor triggering demotion when binary builds shift. |
+| [`src/gates/surprise_check.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/gates/surprise_check.py) | `L2B` anomaly detector waking governance only on un-gated mutations or referent drift. |
+| [`src/tools/edit_file.py`](https://github.com/spoon-t8i/omp-governance-scaffold/blob/main/src/tools/edit_file.py) | Surgical line-bounded file patcher preventing whole-file rewrites on quantized models. |
+
+---
 
 ## 2. Live Frozen Spine (`src/spine/CORE.md`)
 
@@ -87,6 +112,17 @@ second-order effects, false binaries. Code: tempfile fixtures; rows in == rows o
 
 ```
 
+---
+
+## 3. Why Oh-My-Pi (OMP): Accepting Rust Runtime Weight for Compaction & Hash Determinism
+
+Choosing **Oh-My-Pi (OMP)** as the agent runtime is a deliberate engineering trade-off. Because OMP bundles a compiled Rust native layer (`brush` in-process shell, native parsers, and a broad default tool suite), its out-of-the-box binary footprint and default tool schemas are heavier than minimal Python wrappers.
+
+We trim that excess surface area at startup (`--no-prewalk`, restricting exposed tools to `read`, `bash`, and `write`) while keeping the two core OMP capabilities that make deterministic governance possible:
+
+1. **First-Class Compaction Lifecycle Hooks (`before_compact`):** OMP exposes clean pre-compaction interception points right before history compresses (`55K -> 34K` tokens). This allows our `S1–S4` Pre-Compaction Sieve (`pre_compact_sieve.py`) to inject exact active directives, read-only directory locks, and hyphen-exact CLI flags without modifying upstream runtime binaries.
+2. **Native File-Hashing & Anchor Primitives (`hashline` / SHA-256 Receipts):** OMP's native Rust-backed hashing and line-anchored editing primitives eliminate whole-file rewrite drift on 4-bit quantized models (`NVFP4`) and bind state milestones directly to verifiable disk hashes (`H1`/`H2` receipt chains).
+
 
 ================================================================================
 FILE: docs/compaction-sieve.md
@@ -101,6 +137,13 @@ FILE: docs/compaction-sieve.md
 
 When a long coding conversation gets too full, the AI has to summarize old messages to free up memory—just like boiling down a big pot of soup. Normally, summarizing blurs out tiny but vital details like an exact command-line flag or a "do not touch this folder" warning. The **Pre-Compaction Sieve** works like a fine mesh strainer: right before the summary happens, it catches those exact critical facts and pins them safely at the top of the fresh memory window.
 
+---
+
+## Tier 2: Systems Engineering & `S1–S4` Extraction Invariants
+
+Context compaction (`55K -> 34K` tokens) acts as a lossy low-pass filter that erodes high-entropy lexical invariants (hyphen-exact CLI flags, read-only mount locks, active directives, and retry-loop tripwires). Hooked into OMP's `before_compact` lifecycle event, `pre_compact_sieve.py` performs deterministic `S1–S4` extraction with **`0 B` idle overhead** on clean turns and **`<= 137` tokens** of injected post-compaction armor on active turns.
+
+---
 
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
@@ -109,6 +152,19 @@ Most AI coding setups try to solve multi-hour tasks by expanding the **context w
 
 This page explains how our **Oh-My-Pi (OMP)** scaffold solves multi-hour autonomy using a tight **65,536-token ceiling** (~43,000 tokens of active working room) paired with deterministic **pre-compaction sieve armor**.
 
+---
+
+## 1. The Signal-to-Noise Law of Local Inference
+
+Every token inside a context window competes for a fixed 100% pool of model attention. When old terminal logs pile up past 64,000 tokens, **softmax dilution** (the gradual fading of focus as attention scores spread across thousands of background tokens) weakens the model's grip on your instructions.
+
+This drop in **attention signal-to-noise ratio (SNR)**—the balance between critical rules and stale chat logs—hits quantized local models hardest:
+
+1. **Protecting the Logit Margin:** Compressing a model to 4-bit precision (`NVFP4` or `Q4`) introduces a small **quantization noise floor** (tiny rounding variances in the model's math). Inside a clean 43k working window (~150–172 KB of text), the **logit margin**—the confidence gap favoring exact syntax like `--self-test` over a typo like `--selftest`—stays well above that noise floor.
+2. **Preventing Self-Conditioning Cascades:** Models predict every new word based on everything still sitting in chat history. If a stale error stays inside a 200k window, it acts as a bias that pulls future turns into repeating that same mistake.
+3. **Preserving Decode Speed:** Keeping the **KV cache** (stored memory calculations from earlier tokens) capped at 65,536 tokens prevents memory overflow onto slower system RAM, sustaining **54–74.7 tokens per second** over multi-hour runs.
+
+---
 
 ## 2. How the 65K Context Budget Is Partitioned
 
@@ -120,6 +176,20 @@ This page explains how our **Oh-My-Pi (OMP)** scaffold solves multi-hour autonom
 | **Compaction Safety Buffer** | **~16,000 tokens** | Headroom reserved so automatic summarization triggers cleanly around ~49.5k–55k tokens. |
 
 Keeping the top of the prompt identical across turns achieves **98.7% median prefix-cache reuse** (reusing pre-computed math for the static prompt header instead of recalculating it on every step).
+
+---
+
+## 3. Anatomy of the `S1–S4` Pre-Compaction Sieve
+
+Right before compaction runs (`55K -> 34K` tokens), `pre_compact_sieve.py` inspects the session and injects up to four deterministic **Sieve Armor** blocks:
+
+* **`S1` (`ACTIVE-DIRECTIVE` & `PRIOR-TASKS-SUPERSEDED`):** Extracts your latest task instructions verbatim and explicitly marks older tasks from earlier in the session as dead.
+* **`S2` (`MUTATION-POSTURE` & `LOCKED-PATHS`):** Pins your exact write permissions (`READ-ONLY` vs. `WRITE-APPROVED`) and forbidden directory paths so the model cannot modify protected files after a memory reset.
+* **`S3` (`PINNED-ANCHORS` & `PINNED-FLAGS`):** Carries exact specification paths (`specs/*.md`), external verification binaries (such as `ffmpeg`), and hyphen-exact CLI flags (`--self-test`) across the reset boundary.
+* **`S4` (`SPIN-LOOP-TRIPWIRE`):** Counts recent command timeouts (`EXIT=124` or `Killed`) and temporary probe scripts, triggering a mandatory **3-Probe Bailout** if a command fails repeatedly.
+
+* **Inactive Cost:** `0 bytes` (`0 tokens`) when no guards trigger.
+* **Active Ceiling:** Capped at **137 estimated tokens** (`<= 140` token hard limit), verified by **143 two-sided unit tests** (`106` sieve checks + `37` hook checks).
 
 
 ================================================================================
@@ -135,6 +205,18 @@ FILE: docs/attractors.md
 
 An autonomous AI coding loop behaves like a dynamical control system. Over multi-hour sessions, the loop settles into repeating patterns called **attractors** (stable states that pull system behavior toward them). Without structural guardrails, local models drift into **negative attractors**—repeating traps where small mistakes compound into session failure.
 
+---
+
+## 1. Positive Attractors (Stable Verification Basins)
+
+| Positive Attractor | How It Works | OMP Implementation | Measured Result |
+| :--- | :--- | :--- | :--- |
+| **Focal Attention Basin** | Caps active working memory so instructions never drown in old terminal logs. | `65,536`-token ceiling (~43k working room), frozen `1,704`-token spine at Position Zero, and 3 tools (`read`, `bash`, `write`). | **54–74.7 tokens/s** decode speed and **98.7%** median prefix-cache reuse. |
+| **Clean State-Projection Basin** | Replaces lossy chat summaries with exact extraction of active goals, locks, and flags. | `pre_compact_sieve.py` (`S1–S4` Armor: `0 B` idle, `<=137` tokens active) plus clean-repo working directory tracking. | Survives `55K -> 34K` resets with zero `READ-ONLY` lock loss or cross-task bleed. |
+| **External Oracle Grounding** | Forces every code change to pass an independent external program rather than self-written tests. | Checking decoders against `ffmpeg`, `git cat-file`, and SHA-256 byte-pinned receipts (`max|d| = 0`). | Caught 7 stacked `.VAG` audio bugs and a `-6.02 dB` volume math slip missed by local tests. |
+| **Receipted Epoch Chain** | Ties state updates to cryptographic file hashes so valid plan changes succeed without silent decay. | `entail_check.py`, `plan_check.py`, and a Two-Commit Protocol (`H1` code commit followed by `H2` receipt commit). | **0.0%** silent drift and **0.0%** false-alarm gridlock across 24,000 simulated resets. |
+
+---
 
 ## 2. Negative Attractors (Intercepted Failure Traps)
 
@@ -145,17 +227,31 @@ An autonomous AI coding loop behaves like a dynamical control system. Over multi
 | **Self-Certifying Test Illusion** | Broken code passes its own test suite because the test generator shares the exact same bug. | A legacy audio decoder passed `121/121` checks while playing loop flags as audio because its mirror encoder shared the flaw. | Mandatory external ground-truth oracles (`ffmpeg`) and two-sided mutant tests. |
 | **False-Green Listener Trap** | A restart command exits non-zero while an old daemon still holds port `:8080`, tricking readiness checks into passing immediately. | An A/B script passed an invalid `--no-pull` flag (`RC=2`), hit an existing listener (`PID 732182`) in `0s`, and reported a false config reload. | Unmasked exit-code gating (`allow_abbrev=False`), process `STIME` binding, and `EXIT` trap verification. |
 
+
 ================================================================================
 FILE: docs/workstation.md
 ================================================================================
 
 
+[← Back to Home](index.html)
+
+---
+
+## 4. Blackwell (`sm_120`) Longevity & `NVFP4` Weight Maturity
+
+Choosing Blackwell (`sm_120`) early for hardware longevity aligned directly with the maturation of native **4-bit floating-point (`NVFP4`)** model weights and sparse Mixture-of-Experts kernels:
+
+* **Direct Hardware `NVFP4` Execution:** Instead of paying dequantization overhead back to FP16, the dual `GB206` tensor cores execute `NVFP4` natively—fitting `180B`-class sparse models cleanly inside `32 GB` of GDDR7 alongside the `65,536`-token KV cache.
+* **GDDR7 Bandwidth Meets Sparse Active Weights:** With only `6B` active parameters per token and Multi-Token Prediction (`11/12` draft acceptance), GDDR7 memory throughput sustains `54–74.7 tok/s` without thermal or memory bottlenecks.
+
+---
 
 ## 4. Why CachyOS (`7.3.5-2-cachyos`) Powers the Control Plane
 
 * **Tuned Virtual Memory & MoE Streaming:** CachyOS's `sysctl` dirty-ratio tuning, `zram` memory compression, and `madvise` huge-page defaults keep `94 GiB` of DDR4 host RAM responsive while streaming cold Mixture-of-Experts weights across the dual-`x8` PCIe bus.
 * **Unified Multi-Vendor GPU Support:** Prebuilt `NVIDIA 620.73.04` modules, `Mesa 26.3.1`, and `cachyos-drm-awaiter` coordinate headless Blackwell (`GB206`) CUDA initialization alongside Intel Arc (`DG2`) Wayland compositing cleanly on every boot.
 * **Btrfs Snapshot Hygiene:** Copy-on-write system snapshots provide zero-downtime rollback protection across bleeding-edge kernel and inference engine updates.
+
 
 ================================================================================
 FILE: docs/projects.md
@@ -170,18 +266,44 @@ FILE: docs/projects.md
 
 Theory only matters if it survives real-world stress tests. Instead of testing this governance system on toy puzzles, we put it through multi-hour engineering marathons—building playable 3D browser games, surgical audio editors, and custom hardware benchmarks from scratch—to prove the AI can work for hours without breaking its own code or inventing fake test results.
 
+---
+
+## Tier 2: Systems Engineering & Closed-Loop Empirical Validation
+
+Each project below serves as an adversarial, multi-hour integration harness measuring **working runway stability (`~43k` tokens)**, **prefix-cache hit rates (`98.7%`)**, and **external oracle parity** (`ffmpeg` bit-exact `max|d| = 0`, automated WebGL2/Canvas2D visual audits, and `584/584` deterministic gate checks) under sustained autonomous execution.
+
+---
 
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** governance scaffold across seven software and systems engineering campaigns on a local Linux workstation (`Strata 0.1.68` + `Qwen 3.8 Flash-Next NVFP4`, `584/584` combined harness checks).
 
+---
+
+## 1. Saturn Jukebox (Multi-Console ROM Audio Appliance — Nov 2026)
+
+* **Verification:** `157 PASS / 0 FAIL` in `25.0s` · `max|d| = 0` vs. `ffmpeg` · `0 bytes` written to read-only ROM mounts
+* **PlayStation 1 CD-ROM XA & `EBOOT.PBP`:** Built an 18-Sound-Group demultiplexer with automatic rate and channel detection, matching `ffmpeg` across **39.9 million audio samples**.
+* **3DO Opera Filesystem & `SDX2` / `ADP4` Audio:** Added a fast Sector-0 geometry probe and cycle-safe directory walker, unlocking **74 3DO soundtracks (11,103 tracks)** with 100% byte parity.
+* **PlayStation 2 `.VAG` & `.PSS` Stream Repair:** Isolated and fixed seven stacked decoder bugs, restoring **6,936 `.VAG` tracks** across 13.28 million samples.
+* **Raw 2,352-Byte Sector Scatter-Gather (`iso_gather`):** Stripped 304-byte CD error-correction headers between 2,048-byte audio frames, unlocking **26 hidden raw-sector games** across a **1,098-album / 8,488-disc** library.
+
+---
 
 ## 2. AMBER_ASCII AT-Stream v2 & WebGL2 Fractal Audits (Oct – Nov 2026)
 
 * **60 Hz Terminal 3D Raymarching (`AMBER_ASCII`):** Rendered monochrome and phosphor-palette 3D scenes at **40–60+ FPS** with sub-3ms input latency (`20/20` plan gates, `84/0` renderer checks, `97/0` receipt bindings).
 * **WebGL2 / Mandelbulb / Strange Attractor GPU Verification:** Audited a 4,246-line zero-dependency WebGL2/Canvas2D generative engine (`30` modules including `mandelbrot`, `julia`, `newton`, `mandelbulb`, and `clifford`/`lorenz` attractors) running at **139 FPS** on our discrete Intel Arc A310 display GPU without touching compute VRAM.
 
+---
+
+## 3. CEIS & Secular Drift Crucible (Control-Plane Benchmarks — Nov 2026)
+
+* **5-Family Out-of-Distribution (`W1–W5`) Benchmark:** Proved across 2,000 paired seeds per world family that partitioned 3-clock controllers (`210` weights) outperform flat single-clock controllers (`2,036` weights) across droughts, predator swarms, mazes, and reward-hazard conflicts (`+64.61` to `+84.34` survival ticks).
+* **Secular Drift Compaction Benchmark:** Tested 240 campaigns across 25 repeated memory resets (`24,000` transitions), proving **receipted cryptographic epoch chains** achieve `0.0%` silent drift and `0.0%` false-alarm gridlock.
+
+---
 
 ## 4. Cold-Boot KV-Wipe Benchmarks (Aug – Sep 2026)
 
@@ -189,6 +311,19 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 * **Mandelbrot & Julia Set Explorer:** Wiped the model's entire active memory after building the Mandelbrot viewer, cold-booted from `.omp/STATE.md`, and added an interactive Julia Set toggle verified by cross-orbit math assertions (`24/24` checks, zero regressions).
 * **Digital Spaceport Arcade Suite:** Built a multi-file web arcade (Landing Page, Asteroids, Pong, Snake) across isolated cold-boot phases (`130+` cumulative logic and browser QA assertions).
 
+---
+
+## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine
+
+*Synthesized in ~1 hour from multiple prior local-AI life-simulator iterations into a single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
+
+### Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Most artificial-life simulations only care about the creatures swimming around on screen right now. **Strata v17** is really about **the mud at the bottom**.
+
+As four guilds of organisms (producers, herbivores, predators, and scavengers) evolve, form colonies, and die in a deep-water column, their remains sink into a scrolling rock core on the right side of the screen. Just like real paleontology, the rock record is **systematically biased**: when oxygen is high and scavengers are hungry, dead organisms get eaten before they can fossilize—meaning a thriving, well-oxygenated ocean actually leaves behind a *poorer* fossil record than a stagnant, low-oxygen one. You can click any ancient rock layer, inspect its preserved DNA, and **resurrect extinct species** back into a modern ecosystem they never evolved in.
+
+---
 
 ### Tier 2: Systems Engineering, SoA Memory Layout & Taphonomic Invariants
 
@@ -210,6 +345,52 @@ pres = clamp01(0.10 + 0.55 * (1 - O2) - 0.30 * min(3, scavengerDensity))
 #### 3. Measured Telemetry & Honest Model Boundaries
 * **Measured Performance (`45 s` wall-clock run):** `6,694` ticks (`~148 ticks/s`, `~144 fps`), `436` living cells (`159` herbivores, `61` predators, `190` scavengers, `108` corpses), `102` species across `27` generations, `19.3%` atmospheric `O2`, and `335` stratigraphic beds (`328` extinctions).
 * **Explicit Scope Limits:** Arbitrary non-SI units; drag (`0.86`) substitutes for Navier-Stokes fluid viscosity; temperature and `pH` act as niche-mismatch cost penalties rather than Arrhenius metabolic kinetics; `aggr` remains a drift-only latent gene (`2` write occurrences, `0` reads); and the `8`-fossil reservoir sample is intentionally lossy by design.
+---
+
+## Showcase 2: Chromatic Frequency States — Cross-Regime DSP & Optical Dispersion Synthesis
+
+*A `5 h 32 min` two-regime investigative synthesis (`6` DAG nodes, `6/6 PROVEN`, `27` archived gate logs) that produced a `55,474 B` zero-dependency probe, a `214,271 B` machine-readable receipt file and a `30,421 B` report in which every numeral is machine-bound: `51/51` claims ENTAILED, `0` CONTRADICTED, `738/738` numerals covered (`100.0 %`), with `entail_check.py`, `plan_check.py` and `spine_check.py` all at `RC=0`.*
+
+### Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Pitch and colour are the same circle read from opposite ends. Music folds frequency onto a twelve-slot ring by throwing octaves away (`log2(f/f0) mod 1` on `S^1`); a waveguide does the reverse, unwrapping frequency into a delay each colour accumulates (`beta(omega)`, `v_g = (d beta/d omega)^-1`, `GVD = d^2 beta/d omega^2`). Both therefore fail in the same place — energy that belongs in one bin, one pitch class, or one time slot bleeds into its neighbours — and both recover through the same class of estimator: discard amplitude, trust phase. Rather than assert that symmetry in prose, the build measured it: the octave-fold residual, the group-delay tilt and the attractor basins of both regimes come out of one executable probe, and the harness — not the narrative — decided which claims survived.
+
+#### 1. Why the Verification Had to Be Mechanical
+* **No hand-typed numbers:** the report is *generated* from the receipt file, so a transcription error is structurally impossible; `39` checks (`all_pass = true`) run in `25.835 s` under pinned seed `20261125` and pinned probe hash `2a050940…`.
+* **Two-sided gates:** every node carries a positive gate and an inverted negative control; all six passed at exit `0` and all six negatives failed at exit `1`, so a green DAG means the gate can actually go red.
+
+### Tier 2: Systems Engineering, Empirical Receipts & Governance Catch
+
+#### 1. Zero-Transcription-Drift Pipeline
+* **Generate, then re-derive:** `make_report.py` renders `REPORT.md` straight from `receipts.json`; `tools/verify_report.py` re-parses the finished prose and re-derives each figure from the JSON, and `tools/check_receipts.py` gates each regime section (`regime_a`, `regime_b`, `cross`) independently — three sections, three failing negative controls.
+* **Numeric entailment as the closure gate:** `entail_check.py REPORT.md --receipts receipts.json --root .` binds every numeral in the report to a JSON path: `51` claims over `16` artifacts, `51` ENTAILED, `0` CONTRADICTED, `0` UNBOUND, coverage `738/738` (`100.0 %`).
+
+#### 2. Verified Headline Metrics (`receipts.json`)
+
+| Metric | Measured | What it pins |
+|---|---|---|
+| Gaussian propagation vs. closed form | `3.331e-16` max rel. error | the split-step engine is exact, so regime differences are physics and not numerics |
+| Chirped-Gaussian oracle | `2.757e-07` max rel. error | linear chirp accumulation matches the analytic `C1/C2` solution |
+| `beta3` retrieval from `beta2(D)` | `0.02530` rel. error | third-order dispersion is recoverable from measured GVD curves |
+| Soliton `N=1` after `4` dispersion lengths | width ratio `1`, energy rel. err `9.58e-13` | isospectral: the phase-locked state neither broadens nor radiates |
+| Soliton `N=2` breath period | `1.4044 km` vs. `1.40514 km` (`0.000507` rel. err) | breath period and the `N^2 = 4` recombination peak (measured `3.9994`) |
+| Normal-regime pulse (`N=1`, `0.8 um`) | width `4.0479` vs. linear `4.1231` | no soliton exists above the zero-dispersion wavelength |
+| Clock tone at the worst span (`8 km` @ `0.8 um`, `xi_o = 11.572`) | `0.852949 -> 0.245596 -> 0.852949`, ISI `0.0007273 -> 1.7424 -> 0.0007273` | full second-order compensation returns the train to its input state |
+| Pitch estimate: STFT bin-max vs. phase-derivative IF | `21.488` cents vs. `0.001789` cents (ratio `12012`) | sub-cent pitch at `N = 512` comes from phase coherence, not a longer window |
+| Octave-fold residual, `rect` mainlobe `6` bins | `0.2893` pitch classes | the leakage basin: energy crosses more than one pitch class |
+| Leakage crosstalk, worst pair | `36.238 dB` | the floor under any 12-bin chroma estimate |
+
+#### 3. The `tail -2` → `stale=5` Sieve Intercept
+* **The trap:** the frontier was checked with `plan_check.py … --frontier | tail -2`. Two lines of output looked green while `5` of the `6` closed nodes were `STALE` — their gate freezes were pinned to pre-closure commits (`546689a`, `8160999`), and the closure commit moved `HEAD` off all of them at once.
+* **The fix:** re-run every gate at the new `HEAD` (`7a38f73`) and checkpoint the spine plus the project (`356e03f`), never edit the freeze text — `STATE.md` pins the rule verbatim: *"a stale freeze is a repin, never a prose edit."* Post-fix: `plan_check.py --read-only` reports `6/6` done at `RC=0`, `spine_check.py` reports `0` violations, and the pre-compaction sieve reports `dirty = 0`.
+* **The general lesson:** truncating a gate's output to make it readable converts a status gate into a decoration. The gate is the exit code plus the full node list; anything piped through `tail` is a summary of a claim, not the claim.
+
+#### 4. Data-Driven Calibration Boundaries
+* **Octave-width ratio, not its ideal value:** the `C3/C6` kernel-width ratio carries a `-3.057805e-06` grid-quantisation offset that is *identical* across all `9` window x `N` combinations (spread `8.88e-16`), so the gate is on the offset's invariance at `1e-4` — demanding the ratio equal `8` to `1e-6` tests the FFT grid, not the physics.
+* **Constant-Q honesty:** the constant-Q transform is not scored by driving `cv_bins_per_class` to zero (it measures `0.0744323`); the defensible claim is that it beats every fixed-`N` grid (`0.181752`–`0.213176`) by `2.44x` to `2.86x`.
+* **Compensation direction:** `clock_compensated` is *not* better than `clock_out` — full compensation restores the input, so the falsifiable pair is "returns to the input value" plus "the longest span degrades below half the input clock", exact to `1e-9`.
+* **Window-family separation is an order of magnitude, not a threshold:** leave-one-out chroma residual is `< 0.05` for every smooth window (worst `0.01166`) and `0.04518`–`0.2893` for `rect`, a `3.874x` separation between the best `rect` row and the worst smooth row, `24.8x` worst-against-worst — an earlier draft of the state ledger claimed `15x` from a single row and was corrected against the receipt file.
+
 
 ================================================================================
 FILE: docs/theory.md
@@ -224,18 +405,39 @@ FILE: docs/theory.md
 
 If you give an AI a giant wall of rules at the start of every task, it spends half its brainpower just re-reading the rulebook and still forgets instructions hours later. Instead, if you keep the core rulebook tiny and unchanging, write the current to-do list on a single index card on disk, and check every finished step with an automated test, the AI stays fast, focused, and reliable across hours of work.
 
+---
+
+## Tier 2: Systems Engineering & Control-Theoretic Foundations
+
+Long-horizon local agent stability is modeled as a **closed-loop feedback system** with fixed Position-Zero boundary conditions (`tau_0` frozen spine), externalized Markovian state (`tau_1` disk anchor), and event-driven anomaly interruption (`tau_2` surprise sensor). Decoupling semantic proposal from deterministic `RC=0` verification bounds drift without inflating per-turn context overhead.
+
+---
 
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 The core of this repository is practical software engineering: keeping local AI coding loops fast, deterministic, and drift-free over multi-hour runs. This page offers a high-level look at the broader **multi-timescale control** ideas behind the scaffold, along with a few clearly labeled **conjectures** (`[CONJECTURAL]`).
 
+---
+
+## 1. The Core Engineering Principle: Separated Update Clocks
+
+In practice, our **Oh-My-Pi (OMP)** scaffold works because it refuses to treat all information at the same speed:
+
+* **Fast Execution (τ₀):** Shell commands, file reads, and syntax edits happen turn by turn inside a tight ~43k working window.
+* **Medium Compaction Filtering (τ₁):** At ~50k tokens, the `S1–S4` pre-compaction sieve strips stale logs while carrying active directives, directory locks, and exact CLI flags forward.
+* **Slow Governance Spine (τ₂):** A frozen 1,704-token rule header and disk-backed file hashes remain unchanged across resets, anchoring the session against silent drift.
+
+When an adaptive system collapses all three speeds onto a single fast clock (τ = 1), small errors compound into recursive loops—whether in a simulated control agent (`CEIS`) or an unguarded coding session.
+
+---
 
 ## 2. High-Level Conjectural Extensions `[CONJECTURAL]`
 
 * **Cosmic Observability & The Fermi Paradox `[CONJECTURAL]`:** In our signal simulations, whenever an emitter's internal processing clock diverges from a detector's observation window, structured signals blend into background noise. Conjecturally, mature civilizations may decouple internal computation from high-energy waste—meaning cosmic silence could reflect efficient multi-timescale maturity rather than extinction.
 * **Nested Rhythms & Consciousness `[CONJECTURAL]`:** Empirical neuroscience shows that human brains partition activity across fast gamma waves (`30–100 Hz`), medium theta/alpha rhythms (`4–12 Hz`), and slow delta waves (`<1 Hz`). Conjecturally, conscious awareness acts much like an impedance-matched governance seam—keeping fast sensory reality aligned with slow personal identity without locking up.
 * **Prior Scientific Lineage:** Related multi-timescale principles appear in W. Ross Ashby’s cybernetics (*Law of Requisite Variety*), György Buzsáki’s neural oscillation hierarchies, Bernard Baars’ *Global Workspace Theory*, and modern *Nested Learning* architectures in AI.
+
 
 ================================================================================
 FILE: docs/influences.md
@@ -250,15 +452,40 @@ FILE: docs/influences.md
 
 Good engineering rarely comes from reinventing the wheel—it comes from borrowing battle-tested ideas from aviation checklists, database crash recovery, and factory quality control, then adapting them to local AI hardware. Below are the core books, systems, and hardware design principles that shaped this scaffold.
 
+---
+
+## Tier 2: Systems Engineering & Architectural Lineage
+
+This scaffold synthesizes patterns from **write-ahead logging and crash-consistent state machines**, **control-theory feedback loops**, **speculative decoding / prefix-cache memory hierarchy optimization**, and **heterogeneous multi-GPU hardware partitioning**.
+
+---
 
 
 *Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*
 
 Open-source local AI engineering stands on the shoulders of kernel developers, compiler authors, hardware tinkerers, and systems researchers. This page documents the technical influences and community builders that shaped our **Oh-My-Pi (OMP)** governance scaffold and workstation setup.
 
+---
+
+## 1. Local Inference Engines & Quantized Model Tooling
+
+* **Oh-My-Pi (OMP) Harness:** Provided the fast TypeScript/Node CLI loop, in-process shell execution (`brush`), and lifecycle hook seams (`before_compact`) that make deterministic `S1–S4` sieve injection possible without modifying core engine binaries.
+* **Strata Inference Engine (`v0.1.59.1` → `0.1.68`):** Enabled native Blackwell `sm_120` tensor execution, two-GPU expert caching, and host-RAM streaming for large Mixture-of-Experts (MoE) models on consumer hardware.
+* **Qwen Team (`Qwen 3.8 Flash-Next`):** Demonstrated that hybrid **Gated DeltaNet + Sparse Attention** architectures with Multi-Token Prediction (MTP) can deliver frontier-grade code synthesis and graduate-level reasoning on a local workstation when protected from context bloat.
+
+---
 
 ## 2. Tri-GPU Workstation Architecture & Linux Systems Discipline
 
 * **Display vs. Compute Isolation (Intel Arc A310 + Dual RTX 5060 Ti):** Offloading Wayland/KDE desktop compositing onto a dedicated 4 GB **Intel Arc A310** leaves 100% of our **32 GB GDDR7** dual-GPU pool dedicated to MoE experts, KV cache, and automated WebGL2 visual QA.
 * **CachyOS & Btrfs Snapshot Hygiene:** High-frequency kernel scheduling and copy-on-write snapshot rollbacks allowed rapid compiler upgrades and non-destructive testing across multi-hour engineering runs.
+
+---
+
+## 3. Systems Engineering & Verification Philosophy
+
+* **Counterparty Verification & "Two-Sided" Testing:** Pairing probabilistic LLM code generation with independent ground-truth oracles—such as `ffmpeg`, `git cat-file`, Float64 numerical integrators, and SHA-256 slice pins—eliminates self-certifying test illusions.
+* **Demoscene & Hardware-Exact Discipline (8088MPH / Amiga / Retro Console Specs):** Reverse-engineering PlayStation 1 CD-ROM XA sectors, 3DO Opera filesystems, and 60 Hz terminal raymarching reinforced respect for exact byte layouts, fixed-point math, and tight frame budgets.
+* **Coupled Dynamical Systems & Small-Model Decomposition (Amir Husain / Kindi & Generative Designer 2):** Public technical dialogues and comparative audits of `GD2` and `Kindi` reinforced our separation of probabilistic cognition from deterministic Python/Rust gates.
+
 

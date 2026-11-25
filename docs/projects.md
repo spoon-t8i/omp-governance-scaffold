@@ -89,3 +89,48 @@ pres = clamp01(0.10 + 0.55 * (1 - O2) - 0.30 * min(3, scavengerDensity))
 #### 3. Measured Telemetry & Honest Model Boundaries
 * **Measured Performance (`45 s` wall-clock run):** `6,694` ticks (`~148 ticks/s`, `~144 fps`), `436` living cells (`159` herbivores, `61` predators, `190` scavengers, `108` corpses), `102` species across `27` generations, `19.3%` atmospheric `O2`, and `335` stratigraphic beds (`328` extinctions).
 * **Explicit Scope Limits:** Arbitrary non-SI units; drag (`0.86`) substitutes for Navier-Stokes fluid viscosity; temperature and `pH` act as niche-mismatch cost penalties rather than Arrhenius metabolic kinetics; `aggr` remains a drift-only latent gene (`2` write occurrences, `0` reads); and the `8`-fossil reservoir sample is intentionally lossy by design.
+---
+
+## Showcase 2: Chromatic Frequency States — Cross-Regime DSP & Optical Dispersion Synthesis
+
+*A `5 h 32 min` two-regime investigative synthesis (`6` DAG nodes, `6/6 PROVEN`, `27` archived gate logs) that produced a `55,474 B` zero-dependency probe, a `214,271 B` machine-readable receipt file and a `30,421 B` report in which every numeral is machine-bound: `51/51` claims ENTAILED, `0` CONTRADICTED, `738/738` numerals covered (`100.0 %`), with `entail_check.py`, `plan_check.py` and `spine_check.py` all at `RC=0`.*
+
+### Tier 1: The High-Level Picture (Plain-English Intuition)
+
+Pitch and colour are the same circle read from opposite ends. Music folds frequency onto a twelve-slot ring by throwing octaves away (`log2(f/f0) mod 1` on `S^1`); a waveguide does the reverse, unwrapping frequency into a delay each colour accumulates (`beta(omega)`, `v_g = (d beta/d omega)^-1`, `GVD = d^2 beta/d omega^2`). Both therefore fail in the same place — energy that belongs in one bin, one pitch class, or one time slot bleeds into its neighbours — and both recover through the same class of estimator: discard amplitude, trust phase. Rather than assert that symmetry in prose, the build measured it: the octave-fold residual, the group-delay tilt and the attractor basins of both regimes come out of one executable probe, and the harness — not the narrative — decided which claims survived.
+
+#### 1. Why the Verification Had to Be Mechanical
+* **No hand-typed numbers:** the report is *generated* from the receipt file, so a transcription error is structurally impossible; `39` checks (`all_pass = true`) run in `25.835 s` under pinned seed `20261125` and pinned probe hash `2a050940…`.
+* **Two-sided gates:** every node carries a positive gate and an inverted negative control; all six passed at exit `0` and all six negatives failed at exit `1`, so a green DAG means the gate can actually go red.
+
+### Tier 2: Systems Engineering, Empirical Receipts & Governance Catch
+
+#### 1. Zero-Transcription-Drift Pipeline
+* **Generate, then re-derive:** `make_report.py` renders `REPORT.md` straight from `receipts.json`; `tools/verify_report.py` re-parses the finished prose and re-derives each figure from the JSON, and `tools/check_receipts.py` gates each regime section (`regime_a`, `regime_b`, `cross`) independently — three sections, three failing negative controls.
+* **Numeric entailment as the closure gate:** `entail_check.py REPORT.md --receipts receipts.json --root .` binds every numeral in the report to a JSON path: `51` claims over `16` artifacts, `51` ENTAILED, `0` CONTRADICTED, `0` UNBOUND, coverage `738/738` (`100.0 %`).
+
+#### 2. Verified Headline Metrics (`receipts.json`)
+
+| Metric | Measured | What it pins |
+|---|---|---|
+| Gaussian propagation vs. closed form | `3.331e-16` max rel. error | the split-step engine is exact, so regime differences are physics and not numerics |
+| Chirped-Gaussian oracle | `2.757e-07` max rel. error | linear chirp accumulation matches the analytic `C1/C2` solution |
+| `beta3` retrieval from `beta2(D)` | `0.02530` rel. error | third-order dispersion is recoverable from measured GVD curves |
+| Soliton `N=1` after `4` dispersion lengths | width ratio `1`, energy rel. err `9.58e-13` | isospectral: the phase-locked state neither broadens nor radiates |
+| Soliton `N=2` breath period | `1.4044 km` vs. `1.40514 km` (`0.000507` rel. err) | breath period and the `N^2 = 4` recombination peak (measured `3.9994`) |
+| Normal-regime pulse (`N=1`, `0.8 um`) | width `4.0479` vs. linear `4.1231` | no soliton exists above the zero-dispersion wavelength |
+| Clock tone at the worst span (`8 km` @ `0.8 um`, `xi_o = 11.572`) | `0.852949 -> 0.245596 -> 0.852949`, ISI `0.0007273 -> 1.7424 -> 0.0007273` | full second-order compensation returns the train to its input state |
+| Pitch estimate: STFT bin-max vs. phase-derivative IF | `21.488` cents vs. `0.001789` cents (ratio `12012`) | sub-cent pitch at `N = 512` comes from phase coherence, not a longer window |
+| Octave-fold residual, `rect` mainlobe `6` bins | `0.2893` pitch classes | the leakage basin: energy crosses more than one pitch class |
+| Leakage crosstalk, worst pair | `36.238 dB` | the floor under any 12-bin chroma estimate |
+
+#### 3. The `tail -2` → `stale=5` Sieve Intercept
+* **The trap:** the frontier was checked with `plan_check.py … --frontier | tail -2`. Two lines of output looked green while `5` of the `6` closed nodes were `STALE` — their gate freezes were pinned to pre-closure commits (`546689a`, `8160999`), and the closure commit moved `HEAD` off all of them at once.
+* **The fix:** re-run every gate at the new `HEAD` (`7a38f73`) and checkpoint the spine plus the project (`356e03f`), never edit the freeze text — `STATE.md` pins the rule verbatim: *"a stale freeze is a repin, never a prose edit."* Post-fix: `plan_check.py --read-only` reports `6/6` done at `RC=0`, `spine_check.py` reports `0` violations, and the pre-compaction sieve reports `dirty = 0`.
+* **The general lesson:** truncating a gate's output to make it readable converts a status gate into a decoration. The gate is the exit code plus the full node list; anything piped through `tail` is a summary of a claim, not the claim.
+
+#### 4. Data-Driven Calibration Boundaries
+* **Octave-width ratio, not its ideal value:** the `C3/C6` kernel-width ratio carries a `-3.057805e-06` grid-quantisation offset that is *identical* across all `9` window x `N` combinations (spread `8.88e-16`), so the gate is on the offset's invariance at `1e-4` — demanding the ratio equal `8` to `1e-6` tests the FFT grid, not the physics.
+* **Constant-Q honesty:** the constant-Q transform is not scored by driving `cv_bins_per_class` to zero (it measures `0.0744323`); the defensible claim is that it beats every fixed-`N` grid (`0.181752`–`0.213176`) by `2.44x` to `2.86x`.
+* **Compensation direction:** `clock_compensated` is *not* better than `clock_out` — full compensation restores the input, so the falsifiable pair is "returns to the input value" plus "the longest span degrades below half the input clock", exact to `1e-9`.
+* **Window-family separation is an order of magnitude, not a threshold:** leave-one-out chroma residual is `< 0.05` for every smooth window (worst `0.01166`) and `0.04518`–`0.2893` for `rect`, a `3.874x` separation between the best `rect` row and the worst smooth row, `24.8x` worst-against-worst — an earlier draft of the state ledger claimed `15x` from a single row and was corrected against the receipt file.
