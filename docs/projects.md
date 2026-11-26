@@ -61,6 +61,8 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 
 *Synthesized in ~1 hour from multiple prior local-AI life-simulator iterations into a single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
 
+![Strata v17 Live Demo](assets/strata_v17_demo.gif)
+
 ### Tier 1: The High-Level Picture (Plain-English Intuition)
 
 Most artificial-life simulations only care about the creatures swimming around on screen right now. **Strata v17** is really about **the mud at the bottom**.
