@@ -390,6 +390,58 @@ Pitch and colour are the same circle read from opposite ends. Music folds freque
 * **Constant-Q honesty:** the constant-Q transform is not scored by driving `cv_bins_per_class` to zero (it measures `0.0744323`); the defensible claim is that it beats every fixed-`N` grid (`0.181752`–`0.213176`) by `2.44x` to `2.86x`.
 * **Compensation direction:** `clock_compensated` is *not* better than `clock_out` — full compensation restores the input, so the falsifiable pair is "returns to the input value" plus "the longest span degrades below half the input clock", exact to `1e-9`.
 * **Window-family separation is an order of magnitude, not a threshold:** leave-one-out chroma residual is `< 0.05` for every smooth window (worst `0.01166`) and `0.04518`–`0.2893` for `rect`, a `3.874x` separation between the best `rect` row and the worst smooth row, `24.8x` worst-against-worst — an earlier draft of the state ledger claimed `15x` from a single row and was corrected against the receipt file.
+---
+
+## Showcase 3: Dog Town v3 — Real-Time Two-Lane ASCII Cinema
+
+*A `40.0 FPS` terminal cinema in which a locally hosted sparse MoE directs the show while it runs: `DOG3-01..04` proven under a receipt-backed DAG harness, and every numeral below is machine-bound to one `20.0 s` live-LLM receipt (`rec3.json`: `800` frames, `3` prompts, `1` operator preemption).*
+
+![Dog Town v3 Live Demo](assets/dog_town_demo.gif)
+
+### Tier 1: The High-Level Picture (Plain-English Intuition)
+
+A show that waits four seconds for the model is a slideshow, not a show. Dog Town v3 therefore runs direction on two clocks at once:
+
+* **The local lane** reads the keystroke in the frame it arrives. `cut to the neon alley, heavy rain, tension 4` is resolved by keyword rules and applied on the spot — `0.13`, `2.77`, `4.83 ms` for the three prompts of the receipt run, all inside one `25 ms` frame — so the stage visibly reacts before the model emits a single token.
+* **The director lane** asks the local MoE for a structured register (scene, palette, weather, camera, tension, marquee, narration, cast, sprite) and applies it field-by-field as the stream closes each field, so narration is already typing and speaking while the tail of the register is still decoding.
+
+The second lane is where the instructive failure lived. Local decode is CPU-hungry: while the engine streamed cold MoE experts, decode saturated the box's CPU quota and the frame-timing gates began failing on a show that was rendering perfectly. The finding is not *the renderer is slow* but **a timing gate run against a busy box measures the box, not the show.** Two repairs followed: a cadence-gated paired A/B leg that flips one HUD strip inside a single content timeline and rejects any pair that loses its `25 ms` cadence, and a quiet-box yield rule that parks LLM decode while a timing-sensitive gate executes.
+
+---
+
+### Tier 2: Lane Contract, Verified Receipts & Honest Boundaries
+
+#### 1. Lane Contract and Backpressure
+* **Grammar-ordered streaming:** the response grammar is ordered by latency tier (stage cues, then narration payload, then cast/sprite payload) so a cue can be applied the moment its field closes instead of at end-of-response.
+* **Register accounting:** `3` lane calls, `3` registers closed, `3` flushed, `0` short, `0` cut, `0` deadline hits, `1` cancelled by operator preemption (`t = 9.0 s`, `voice_dropped = 0`).
+* **Preemption, not queueing:** prompts were submitted at `t = 2.0`, `9.0`, `15.5 s` (`6.5`–`7.0 s` apart), above the `~4.0`–`5.5 s` cadence floor at which a new ask cancels an in-flight register; the runner documents why — with four requests queued, measured first byte went from `2.9 s` to `24.7 s`.
+
+#### 2. Verified Headline Metrics (`rec3.json`)
+
+| Metric | Measured | What it pins |
+|---|---|---|
+| Frames emitted / late / freezes | `800 / 0 / 0` at `40.0 FPS` over `20.0 s` | the render loop never dropped or froze a frame while the director lane was decoding |
+| Frame time p50 / p99 / max | `0.01 / 0.02 / 22.71 ms` | steady-state cost is hundredths of a millisecond; the max is a single hiccup, see §4 |
+| Hotkey dispatch max (gate `<= 10.0 ms`) | `0.039 ms` | keyboard handling clears its gate by more than two orders of magnitude |
+| Local keyword cue, `3` prompts | `0.13 / 2.77 / 4.83 ms` | the local lane answers inside the frame the key arrives |
+| Remote first byte | `1957.89 / 2457.80 ms` | live local MoE decode latency on a loaded box |
+| First remote cue on screen (TTFC) | `2045.73 / 2599.85 ms` | the remote stage cue lands mid-parse, not at completion |
+| First narration | `2570.77 / 3124.86 ms` | typing and speech begin before the register closes |
+| Full parse | `4482.86 / 3711.51 ms` | TTFC precedes completion by `1.43x` to `2.19x` |
+| Voice lane | `2` of `2` spoken, `0` dropped, `0` underruns, `0` transport failures, max backlog `5.211 ms` | narration never starved or double-spoke under preemption |
+| Bounded story state | `39` words / `916` bytes across `2` beats | continuity is a rolling block, not a growing transcript |
+| Live-generated sprite | `STRAY_DOG`, `2` frames, `5` rows x `7` cols | an LLM-authored sprite that cleared the bounding-box sanitizer before caching |
+| Sprite patrol | `10` samples over `4.65 s`, column `124 -> 64`, frame parity alternating every sample | the 2-frame cycle really animates while the sprite walks |
+| Scene cuts | `3` | Bayer crossfades between distinct backdrops, driven by the director lane |
+
+#### 3. Continuity as a Measured Object
+* **Beat handoff:** the story block carried into the next beat is `STORY scene=ROOFTOP_RAIN weather=CLEAR tension=2 arc=SETUP` plus `CAST STRAY_DOG:PATROL` — the dog the operator asked for in beat one is still on screen, and still patrolling, in beat two.
+* **Bounded by construction:** `2` beats cost `916` bytes of log and `39` words of prompt injection, so a multi-hour show cannot grow its own context the way a raw console dump would.
+
+#### 4. Honest Boundaries
+* **The `22.71 ms` max is not a hotkey cost:** `hotkey_paint_ms_max` equals `frame_ms_max` exactly, i.e. one scheduling hiccup on a box at load average `11.56`, while dispatch itself peaked at `0.039 ms`.
+* **The voice lane ran on a null sink:** `real_device = false`, `device_busy_s = 7.2`, so the `2` of `2` spoken and `0` underruns are pipeline accounting, not an acoustic claim.
+* **One receipt, three prompts:** every figure above is a single `20.0 s` run (`2` narration turns, `1` preemption); the cadence floor and the `2.9 s` to `24.7 s` queue-collapse figure come from the runner's own measured comment, not from this receipt.
 
 
 ================================================================================
