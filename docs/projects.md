@@ -57,6 +57,21 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 
 ---
 
+<!-- BEGIN GENERATED: gate4-entry -->
+## 5. CFS Gate 4 &mdash; Chromatic Coherent Dedispersion on Real GUPPI Pulsar Bytes (Nov 2026)
+
+*Full receipt page: [cfs-gate4.html](cfs-gate4.html). One session, 5 gates, 10 gate-arm receipts, `34.1 GB` of published GUPPI bytes.*
+
+* **Pre-registered bar, never moved:** streaming multi-rotation coherent dedispersion plus narrow-plane chromatic phase folding over a 128-block span (11.9683 rotations) reached `R_plane` z = **`4.7862`** against a pre-registered `z_crit = 6.0` &mdash; a deficit of `1.2138`; the matched blank-sky sweep peaked at `4.2942` with `0` false-positive locks.
+* **Null counterparties at matched depth:** the blank-sky slice swept `41` dispersion trials and the ON slice was phase-randomised into `16` spin-desynchronised surrogates &mdash; **`0` false-positive locks** on both legs, the strongest surrogate reaching `4.3335`.
+* **Per-rotation stratification:** `11` audited rotations, deepest `z = 3.8493`, every one inside the Gumbel ceiling `3.4369` &plusmn; `0.3624` for its own bin count (Gumbel `p = 0.2743`, Rayleigh `p = 0.1607`).
+* **Single-plane RFI immunity:** a `200`-SNR tone for `2.0 ms` per rotation is worth `2,679,610` sigma in total intensity and `-0.0013` z in the chromatic statistic.
+* **Positive control, not a broken pipeline:** an injected weak coherent beacon is invisible at the `16`-block Gate 3 prefix depth (`z = 5.1629`) and a hard lock at `64` blocks (`z = 13.8325`), recovered at its injected DM `11.0`.
+* **Governance under load:** `10` gate-arm receipts with every mutant arm exiting `1`; the `4,096 MiB` RSS ceiling measured per engine leg (max `3,612.9 MiB`) after one honest breach that was fixed and re-gated (pre-fix leg `4,141.3 MiB`).
+<!-- END GENERATED: gate4-entry -->
+
+---
+
 ## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine
 
 *Synthesized in ~1 hour from multiple prior local-AI life-simulator iterations into a single-file zero-allocation Web/Canvas2D engine (`1,592` lines, `75,977 B`) built and verified under the OMP governance harness (`~148 ticks/s` / `~144 fps` sustained on the Intel Arc A310 visual QA pipeline).*
