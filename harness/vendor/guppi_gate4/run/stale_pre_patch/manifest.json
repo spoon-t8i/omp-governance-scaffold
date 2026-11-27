@@ -1,0 +1,364 @@
+{
+  "reason": "fold_series buffer-lifetime fix changed peak RSS of every engine leg; pre-patch arm receipts must not be reachable by --reuse",
+  "moved_utc": "2026-11-27T04:05:33Z",
+  "n": 51,
+  "files": [
+    {
+      "path": "run/receipts/_g03_n112.json",
+      "moved_to": "run/stale_pre_patch/_g03_n112.json",
+      "bytes": 2771,
+      "mtime_utc": "2026-11-26T22:49:31Z",
+      "sha256": "e9be04b091cacb9331bbb76b61ef807da7c16313c97a2379192f4a960f3b76e0"
+    },
+    {
+      "path": "run/receipts/_g03_n128.json",
+      "moved_to": "run/stale_pre_patch/_g03_n128.json",
+      "bytes": 2987,
+      "mtime_utc": "2026-11-26T22:55:47Z",
+      "sha256": "f9f74c8ff90f1b79f420c5a981885340265b95c1e20a7d494b83dfe82eb61202"
+    },
+    {
+      "path": "run/receipts/_g03_n16.json",
+      "moved_to": "run/stale_pre_patch/_g03_n16.json",
+      "bytes": 1288,
+      "mtime_utc": "2026-11-26T22:27:48Z",
+      "sha256": "e0cb771ea83e3fb895ed6b82e38a37ad93e0497828c92c82906b6e2fb91c6d9c"
+    },
+    {
+      "path": "run/receipts/_g03_n32.json",
+      "moved_to": "run/stale_pre_patch/_g03_n32.json",
+      "bytes": 1450,
+      "mtime_utc": "2026-11-26T22:29:18Z",
+      "sha256": "3d1f6ed0e0a494103703a89012d404b734c49c9a1e9e3e3e001f583e4ef8ed95"
+    },
+    {
+      "path": "run/receipts/_g03_n48.json",
+      "moved_to": "run/stale_pre_patch/_g03_n48.json",
+      "bytes": 1784,
+      "mtime_utc": "2026-11-26T22:31:38Z",
+      "sha256": "1bf483b62d730e46ca6cbd5502d3785bd0d944cf9c49340aff255fede90bac0f"
+    },
+    {
+      "path": "run/receipts/_g03_n64.json",
+      "moved_to": "run/stale_pre_patch/_g03_n64.json",
+      "bytes": 1953,
+      "mtime_utc": "2026-11-26T22:34:50Z",
+      "sha256": "afded2b200aa8887d53ee5f93200d54dbb51c5ee1b43492d7ca0d3e64bc37c8a"
+    },
+    {
+      "path": "run/receipts/_g03_n80.json",
+      "moved_to": "run/stale_pre_patch/_g03_n80.json",
+      "bytes": 2278,
+      "mtime_utc": "2026-11-26T22:38:40Z",
+      "sha256": "d55dcef68dabaeb88fc51eb83e31128efb4949c387968402667d449750984cb5"
+    },
+    {
+      "path": "run/receipts/_g03_n96.json",
+      "moved_to": "run/stale_pre_patch/_g03_n96.json",
+      "bytes": 2437,
+      "mtime_utc": "2026-11-26T22:43:36Z",
+      "sha256": "5dc2d99dd9d88ec3edd2e4ab7cb8d3ba3c85f77d059f00a2335f45d0b729e886"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_every_n128.json",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_every_n128.json",
+      "bytes": 1532,
+      "mtime_utc": "2026-11-26T23:21:02Z",
+      "sha256": "327fd00e9c0221e79a18323131e6c4dd169761c659e085b632181d536729e137"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_every_n80.json",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_every_n80.json",
+      "bytes": 1520,
+      "mtime_utc": "2026-11-26T20:39:01Z",
+      "sha256": "39587886fa30b0cd54723d3de73f3a11784a9b845315dedc262a72c3c415e049"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_single_n128.json",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_single_n128.json",
+      "bytes": 1535,
+      "mtime_utc": "2026-11-26T23:08:29Z",
+      "sha256": "140956b4eb0c973d5e369696c584d1bc40ed6c6f21f3dae325aa2350b944a935"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_single_n80.json",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_single_n80.json",
+      "bytes": 1519,
+      "mtime_utc": "2026-11-26T20:34:10Z",
+      "sha256": "bb22742205b1ceeb92650d02d0ee2694abd53f9c64624d5027d0a1973c2fd340"
+    },
+    {
+      "path": "run/receipts/_g03_n112.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n112.cmd",
+      "bytes": 249,
+      "mtime_utc": "2026-11-26T22:49:31Z",
+      "sha256": "f3b449b5dee701ce7aab90661437a21eadaf2ba3e4dea30cfe8e2a35ac9256f3"
+    },
+    {
+      "path": "run/receipts/_g03_n128.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n128.cmd",
+      "bytes": 298,
+      "mtime_utc": "2026-11-26T22:55:47Z",
+      "sha256": "8802e80657c05b6f89fc0e752e78ae81909dfc6ef28c530e030d905ae1489a7b"
+    },
+    {
+      "path": "run/receipts/_g03_n16.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n16.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:27:48Z",
+      "sha256": "64fcd1af5d8af2596ad302bac7a32f59ac219de85a918e15f9a57bd0fe9937f1"
+    },
+    {
+      "path": "run/receipts/_g03_n32.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n32.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:29:18Z",
+      "sha256": "21819a135f621ac2ab43dff238d374df4bb8d35c0eca8854e7d94fb4b8592489"
+    },
+    {
+      "path": "run/receipts/_g03_n48.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n48.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:31:38Z",
+      "sha256": "302bdc4dc76f0dd10725b16fec1f00b876c725aa8f02c4761a14a024a89cea91"
+    },
+    {
+      "path": "run/receipts/_g03_n64.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n64.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:34:50Z",
+      "sha256": "736b64805d1ddef927956d3d8966216e9fa79bc6847ffbc55b40e7ff6044fcef"
+    },
+    {
+      "path": "run/receipts/_g03_n80.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n80.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:38:40Z",
+      "sha256": "043b470e3d4bc69eb4eca9bcaf0608b5ed5bae8f654dac72c7aa4391c7acca80"
+    },
+    {
+      "path": "run/receipts/_g03_n96.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_n96.cmd",
+      "bytes": 248,
+      "mtime_utc": "2026-11-26T22:43:36Z",
+      "sha256": "f97628b56edb7f8104d92342c53b4ea78c5f23710be35b9a4422449550e9652d"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_every_n128.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_every_n128.cmd",
+      "bytes": 329,
+      "mtime_utc": "2026-11-26T23:21:02Z",
+      "sha256": "89f2e1dbc70714d10324bf374039264b3e1e0cd208391bc45bf8e1ac7edb9cef"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_every_n80.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_every_n80.cmd",
+      "bytes": 327,
+      "mtime_utc": "2026-11-26T20:39:01Z",
+      "sha256": "938ba2cd88470c81a00992d42cdf09fdc2d0500124d3f7962b27040cc1b3f203"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_single_n128.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_single_n128.cmd",
+      "bytes": 305,
+      "mtime_utc": "2026-11-26T23:08:29Z",
+      "sha256": "91a979d2bcd9057940c0ed876571e1b995f6c11b3435af6e620538519db89bff"
+    },
+    {
+      "path": "run/receipts/_g03_rfi_single_n80.cmd",
+      "moved_to": "run/stale_pre_patch/_g03_rfi_single_n80.cmd",
+      "bytes": 303,
+      "mtime_utc": "2026-11-26T20:34:10Z",
+      "sha256": "821392158eca4da4613d38d13696e4fba026ae0dc76d9ad602a7902ce3dcfc4b"
+    },
+    {
+      "path": "run/receipts/g03_scaling.json",
+      "moved_to": "run/stale_pre_patch/g03_scaling.json",
+      "bytes": 5609,
+      "mtime_utc": "2026-11-27T01:26:46Z",
+      "sha256": "4dda8c9c7fb2cf796ebb6b29e13885dc926e64dec7d55b5c19907e760a56aaad"
+    },
+    {
+      "path": "run/receipts/g03_per_spin.json",
+      "moved_to": "run/stale_pre_patch/g03_per_spin.json",
+      "bytes": 2630,
+      "mtime_utc": "2026-11-27T01:26:46Z",
+      "sha256": "2fc7bd8d68bca0329d2880feb6b603c81ce85a64279acf706354502333c16124"
+    },
+    {
+      "path": "run/receipts/g03_rfi.json",
+      "moved_to": "run/stale_pre_patch/g03_rfi.json",
+      "bytes": 590,
+      "mtime_utc": "2026-11-27T01:26:46Z",
+      "sha256": "1da21e8bac24af76a371d79329672b0acc2cf9833c68a037bd1f495f196db03a"
+    },
+    {
+      "path": "run/receipts/g03_period_search.json",
+      "moved_to": "run/stale_pre_patch/g03_period_search.json",
+      "bytes": 4232,
+      "mtime_utc": "2026-11-27T02:00:31Z",
+      "sha256": "92c7964dc8a8eb642a1f855a64cfad376833cf1f2dcde7fe22da9ba97af6bf23"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_control_n128.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g03_control_n128.cmd",
+      "bytes": 242,
+      "mtime_utc": "2026-11-27T00:03:12Z",
+      "sha256": "75b981bef6eeae40ef8a6a28483591b897798f6384d36840647f75674e6c181a"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_control_n128.json",
+      "moved_to": "run/stale_pre_patch/mutant___g03_control_n128.json",
+      "bytes": 1113,
+      "mtime_utc": "2026-11-27T00:03:12Z",
+      "sha256": "5a6d71468bad6c230b32402e501e7218e8fea3dbbbd6dc54350cdac2ad5116a8"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_n128.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g03_n128.cmd",
+      "bytes": 339,
+      "mtime_utc": "2026-11-26T23:54:41Z",
+      "sha256": "edd9adea599765d30119e12b25bb1690c09e8ba2cafdd4af9217aeede573a325"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_n128.json",
+      "moved_to": "run/stale_pre_patch/mutant___g03_n128.json",
+      "bytes": 2996,
+      "mtime_utc": "2026-11-26T23:54:41Z",
+      "sha256": "daf7a9091d55a8bdb4490f07dbc55c5cf3e5c42c4ac0d4923f2379c8e563fecb"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_n16.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g03_n16.cmd",
+      "bytes": 282,
+      "mtime_utc": "2026-11-26T23:45:20Z",
+      "sha256": "4b064b313d5dfc941ba135c4337b4ac94b9ccf91bd5e5abc2a072e035c6250df"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_n16.json",
+      "moved_to": "run/stale_pre_patch/mutant___g03_n16.json",
+      "bytes": 1280,
+      "mtime_utc": "2026-11-26T23:45:20Z",
+      "sha256": "977f8f8d40c105b2fe0bed095e9ea7450480fd6b93dbc0889042e75980257176"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_rfi_every_n128.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g03_rfi_every_n128.cmd",
+      "bytes": 336,
+      "mtime_utc": "2026-11-27T00:37:15Z",
+      "sha256": "d6435ac23aeda8c3089334e84d4be9d934e63822b84a70a82b2ac3b76fcb3a6b"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_rfi_every_n128.json",
+      "moved_to": "run/stale_pre_patch/mutant___g03_rfi_every_n128.json",
+      "bytes": 1532,
+      "mtime_utc": "2026-11-27T00:37:14Z",
+      "sha256": "27dc22e3744dadd7e3665f6f611b02f4387f0d51f78855a4184303dcd7d36df6"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_rfi_single_n128.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g03_rfi_single_n128.cmd",
+      "bytes": 312,
+      "mtime_utc": "2026-11-27T00:20:05Z",
+      "sha256": "46358bd34feffaadcdea6ab62aad6b75c51aa020725cf3daaf2c1b550ba807a5"
+    },
+    {
+      "path": "run/receipts/mutant/_g03_rfi_single_n128.json",
+      "moved_to": "run/stale_pre_patch/mutant___g03_rfi_single_n128.json",
+      "bytes": 1533,
+      "mtime_utc": "2026-11-27T00:20:05Z",
+      "sha256": "7c68eb357c28c294c59d2fbce34a4002598e74a1bda405fda193615a1b5e485b"
+    },
+    {
+      "path": "run/receipts/mutant/g03_scaling.json",
+      "moved_to": "run/stale_pre_patch/mutant__g03_scaling.json",
+      "bytes": 3221,
+      "mtime_utc": "2026-11-27T02:00:32Z",
+      "sha256": "6f06f6f11f890595e8b9024ad8d5dd0a97f7036a26c824725fb09004128e674d"
+    },
+    {
+      "path": "run/receipts/_g04_off_sweep.cmd",
+      "moved_to": "run/stale_pre_patch/_g04_off_sweep.cmd",
+      "bytes": 204,
+      "mtime_utc": "2026-11-27T02:30:45Z",
+      "sha256": "3265d062ecf70ef9887493c11dfe20b2c75315c0d451209a64c69d85859aa6ce"
+    },
+    {
+      "path": "run/receipts/_g04_off_sweep.json",
+      "moved_to": "run/stale_pre_patch/_g04_off_sweep.json",
+      "bytes": 8322,
+      "mtime_utc": "2026-11-27T03:14:39Z",
+      "sha256": "2ef1fe1773e318883596b44f23dafe491a8a3450d596c00eb95e1061d1e1ef6d"
+    },
+    {
+      "path": "run/receipts/_g04_surrogates.cmd",
+      "moved_to": "run/stale_pre_patch/_g04_surrogates.cmd",
+      "bytes": 237,
+      "mtime_utc": "2026-11-27T01:43:10Z",
+      "sha256": "84ab5c20e58b6d03d38f4056af85d3d03f95bed2482b8a5b7056ed915f66325b"
+    },
+    {
+      "path": "run/receipts/_g04_surrogates.json",
+      "moved_to": "run/stale_pre_patch/_g04_surrogates.json",
+      "bytes": 4638,
+      "mtime_utc": "2026-11-27T01:55:38Z",
+      "sha256": "a63918fa86d0fd559f9a91f6b4ec3f275d563fe79d3647ac85a758474daf00c8"
+    },
+    {
+      "path": "run/receipts/g04_null.json",
+      "moved_to": "run/stale_pre_patch/g04_null.json",
+      "bytes": 4402,
+      "mtime_utc": "2026-11-27T03:14:40Z",
+      "sha256": "02f07bc934669bc45f3cd23c38bb5b28535a06937e5453dc873c4a51ec303d6c"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_beacon_n16.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g04_beacon_n16.cmd",
+      "bytes": 245,
+      "mtime_utc": "2026-11-27T03:09:49Z",
+      "sha256": "9b13533f03f51fe2cbe0e6324185768b9c436c2859007cc74e6b270b83b55f9d"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_beacon_n16.json",
+      "moved_to": "run/stale_pre_patch/mutant___g04_beacon_n16.json",
+      "bytes": 1586,
+      "mtime_utc": "2026-11-27T03:10:41Z",
+      "sha256": "45274918cde298ea4399dbfcb82897a5db4c2614bd92cbb24d03705923d23d64"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_beacon_n64.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g04_beacon_n64.cmd",
+      "bytes": 245,
+      "mtime_utc": "2026-11-27T03:10:41Z",
+      "sha256": "e9deb51d4e5f9f513812f02eb21338a61dd809b25fedd31c9d0d96990da78573"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_beacon_n64.json",
+      "moved_to": "run/stale_pre_patch/mutant___g04_beacon_n64.json",
+      "bytes": 1591,
+      "mtime_utc": "2026-11-27T03:14:09Z",
+      "sha256": "723e1565311a94795d0a44308261d89fcb83449876317a75ae584afe58348014"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_off_sweep.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g04_off_sweep.cmd",
+      "bytes": 260,
+      "mtime_utc": "2026-11-27T03:14:09Z",
+      "sha256": "2985b8dcfe921cad89fdd938d9e72f257c6a5d7a68404583cd7cc18e0f27cacc"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_surrogates.cmd",
+      "moved_to": "run/stale_pre_patch/mutant___g04_surrogates.cmd",
+      "bytes": 244,
+      "mtime_utc": "2026-11-27T01:48:58Z",
+      "sha256": "0716ae350f2b64db74de1539492804732c109e0c02316304745802e1b2de211b"
+    },
+    {
+      "path": "run/receipts/mutant/_g04_surrogates.json",
+      "moved_to": "run/stale_pre_patch/mutant___g04_surrogates.json",
+      "bytes": 4636,
+      "mtime_utc": "2026-11-27T02:00:18Z",
+      "sha256": "170f6a610bb03724fe083f7e7742bbbcc38312a86d4a04f579f9aad8d4bff753"
+    }
+  ]
+}

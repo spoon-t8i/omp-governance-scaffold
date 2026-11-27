@@ -64,6 +64,7 @@ Every guide on the [GitHub Pages site](https://spoon-t8i.github.io/omp-governanc
 | [`src/gates/`](src/gates/) | 10 standalone `RC=0` verification gates (`spine_check.py`, `entail_check.py`, `plan_check.py`, `fact_store.py`, `regime_sensor.py`, `surprise_check.py`, `merkle_compactor.py`, `gate_exec.py`, `gate_freeze.py`, `checkpoint.sh`). |
 | [`src/tools/`](src/tools/) | Line-bounded surgical editor (`edit_file.py`), static impact analyzer, token probe, and session telemetry utilities. |
 | [`docs/`](docs/) | Jekyll GitHub Pages source (`architecture`, `compaction-sieve`, `attractors`, `omp-governance`, `cfs-gate4`, `workstation`, `projects`, `theory`, `influences`, `llms.txt`, `llms-full.txt` &mdash; the two campaign pages are generated from receipts by `src/tools/make_docs_pages.py`, the bundle by `src/tools/bundle_docs.py`). |
+| [`harness/`](harness/) | `docs_gate.sh`: the generated pages and `llms-full.txt` can never rot - rebuilds into a scratch copy from a vendored `guppi_gate4` receipts snapshot and refuses any difference, with mutant arms that must bite. |
 | [`AGENTS.md`](AGENTS.md) | Root repository navigation contract for autonomous CLI coding agents. |
 
 ---
