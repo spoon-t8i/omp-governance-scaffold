@@ -605,7 +605,7 @@ title: "Ten Governance Laws: Turning Agent Prose Into Gates"
 
 # Ten Governance Laws: Turning Agent Prose Into Gates
 
-*Every receipt figure quoted here is read from `guppi_gate4/run/receipts.json` by the page generator. The laws are enforced by tools in `src/` and `/home/snoop/.omp/agent/tools/`, not by reminders in a prompt.*
+*Every receipt figure quoted here is read from `guppi_gate4/run/receipts.json` by the page generator. The laws are enforced by tools in `src/` and the operator gate home (`~/.omp/agent/tools/`), not by reminders in a prompt.*
 
 ## Tier 1: The High-Level Picture (Plain-English Intuition)
 

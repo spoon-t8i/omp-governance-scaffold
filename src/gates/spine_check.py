@@ -92,6 +92,16 @@ Checks
      OMP_SURPRISE=0 skips the probe and prints the skip, so a boundary that skipped the audit
      never reads like one that ran it and slept; an unusable policy is reported as ERROR,
      never as a pass.
+ 21. Promotion seam: a STATE.md or PERM.md row that cites a project's `run/receipts.json` (or a
+     `perm-record.md` beside one) is graded against that receipt index - every measurement numeral
+     it asserts must round to a value the index carries - and against the falsification journal
+     `run/falsified.jsonl`, so a token the project falsified may appear only inside an explicit
+     falsification clause. Structural tokens (hashes, dates, `6/6`, `g01 2`-style check counts,
+     probe diagnostics with no unit) are not measurements and are not graded; a verifier's own
+     verdict (`100.0%`) is allowlisted; a cited receipt path that is no longer on disk degrades to
+     a NOTE, never a guess. The defect: prompt-echo drift after a compaction wrote fabricated
+     measurement numerals into the spine and the gate passed it, because entail_check.py graded the
+     project's report, not the promoted rows.
 Exit 0 = clean, 1 = at least one violation.
 """
 
@@ -1088,6 +1098,238 @@ def resolve_referent(spec):
 TIMEOUT_RE = re.compile(r"^\s*#\s*spine-timeout:\s*(\d+)")
 
 
+# ---------------------------------------------------------------------------
+# 21. Promotion seam. A numeral that enters STATE.md or PERM.md is the numeral every later
+# session acts on, so a row citing a project receipt index must state only numbers that index
+# carries, and must not re-assert a token the project falsified.
+SEAM_CITE_RE = re.compile(r"(/[^\s,;)\]]+?)/(?:run/receipts\.json|perm-record\.md)")
+SEAM_MULTI = (r"pc cm\^-3|MHz|kHz|GHz|dB|MiB|GiB|KiB|MB|GB|KB|ms|us|ns|s|B|%|x|sigma|bar|"
+              r"surrogates|surrogate|blocks|block|locks|lock|gates|gate|checks|check|nodes|node|"
+              r"planes|plane|lines|line|shots|shot|arms|arm|scenarios|scenario|frames|frame|"
+              r"steps|step|rows|row")
+SEAM_UNIT_RE = re.compile(r"^(?:\s+(?:" + SEAM_MULTI + r")(?![A-Za-z0-9])|[%x](?![A-Za-z0-9]))")
+SEAM_KEYWORDS = ("DM|z_crit|z|R_plane|R_crit|SNR|rms|OBSFREQ|OBSBW|NCHAN|NPOL|NBITS|DIRECTIO|"
+                 "N_eff|K_DM|BLOCSIZE|Nsub|nsubint|stat|delay|spread|excess|bar")
+SEAM_KEY_RE = re.compile(r"(?:(?<=^)|(?<=[\s(\[:>=,]))(?:" + SEAM_KEYWORDS + r")[=: ]*$")
+SEAM_NUM_RE = re.compile(r"(?<![\d.])([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?!\d)")
+SEAM_ALLOW_RE = re.compile(r"(?<![\d.])100(?:\.0)?%(?![\d.])")
+SEAM_SIGN_AFTER = " ([<:,=\u00b1\t\n"
+SEAM_NEG_MARKERS = ("falsified", "falsification", "not ", "never", "unserved", "assumed")
+SEAM_STRONG_FALSIFY_RE = re.compile(r"falsif|fabricat", re.I)
+
+
+def seam_unit_at(text, i):
+    """True when a unit or multiplier starts at i, so the numeral before it is a measurement."""
+    return bool(SEAM_UNIT_RE.match(text[i:]))
+
+
+def seam_numerals(text):
+    """Every numeral in a row, flagged as a measurement claim when it is a decimal, carries a
+    unit, or follows a measurement keyword. Numerals inside hashes, hex digests, dates and
+    identifier words (sha256, g01, B0329, 2fd7ed3) are structural, never measurements."""
+    allow = [m.span() for m in SEAM_ALLOW_RE.finditer(text)]
+    out = []
+    for m in SEAM_NUM_RE.finditer(text):
+        tok, s, e = m.group(1), m.start(), m.end()
+        if any(a <= s < b for a, b in allow):
+            continue
+        if tok[0] in "+-" and not (s == 0 or text[s - 1] in SEAM_SIGN_AFTER):
+            tok, s = tok[1:], s + 1          # SNR-12.0, 26.50+/-0.25: the mark is not a sign
+        if s >= 2 and text[s - 2:s].isalpha():
+            continue                          # sha256, hex runs
+        if e < len(text) and text[e].isalpha() and not seam_unit_at(text, e):
+            continue                          # 2fd7ed3, e3ab5ebd
+        mant = re.split(r"[eE]", tok)[0]
+        prec = len(mant.split(".")[1]) if "." in mant else 0
+        unit, key = seam_unit_at(text, e), bool(SEAM_KEY_RE.search(text[:s]))
+        out.append({"tok": tok, "val": float(tok), "prec": prec, "sci": "e" in tok.lower(),
+                    "unit": unit, "key": key, "claim": bool("." in mant or unit or key),
+                    "s": s, "e": e})
+    return out
+
+
+def seam_clause(text, start):
+    """The `;`- or newline-delimited clause holding `start`: a falsification is scoped to its
+    own clause, so one honest `is FALSIFIED by the bytes` cannot launder the rest of a row."""
+    lo = max([0] + [m.end() for m in re.finditer(r"[;\n]", text) if m.end() <= start])
+    hi = min([len(text)] + [m.start() for m in re.finditer(r"[;\n]", text)
+                            if m.start() >= start])
+    return text[lo:hi]
+
+
+def seam_negated(text, start):
+    return any(k in seam_clause(text, start).lower() for k in SEAM_NEG_MARKERS)
+
+
+def seam_receipt_index(path):
+    """The values a receipt index actually carries: (float, printed precision, scientific) per
+    row value, plus the row count. None when the file holds no `rows` map."""
+    try:
+        rows = json.loads(pathlib.Path(path).read_text()).get("rows")
+    except (OSError, ValueError):
+        return None
+    if not isinstance(rows, dict):
+        return None
+    vals = []
+    for v in rows.values():
+        raw = v.get("value") if isinstance(v, dict) else v
+        if not isinstance(raw, str):
+            continue
+        try:
+            float(raw)
+        except ValueError:
+            continue
+        vals.append((float(raw), len(raw.split(".")[1]) if "." in raw else 0,
+                     "e" in raw.lower()))
+    return {"values": vals, "n_rows": len(rows), "path": str(path)}
+
+
+def seam_num_entailed(val, prec, sci, idx):
+    """entail_check.py's rounding rule: a claim holds when some receipt value, rounded to the
+    claim's own printed precision, equals it. Scientific notation compares absolutely."""
+    for v, _vp, vsci in idx["values"]:
+        if sci or vsci:
+            if abs(v - val) <= 1e-9 * max(1.0, abs(v)):
+                return True
+        elif prec == 0:
+            if abs(round(v) - val) < 1e-9:
+                return True
+        elif abs(round(v, prec) - val) < 1e-9:
+            return True
+    return False
+
+
+def seam_claim_entailed(text, c, idx):
+    if c["unit"] and re.match(r"^\s*rows?\b", text[c["e"]:]) and round(c["val"]) == idx["n_rows"]:
+        return True                            # a row count the index itself states
+    return seam_num_entailed(c["val"], c["prec"], c["sci"], idx)
+
+
+def seam_harvest(piece, out):
+    for m in re.finditer(r"[A-Za-z]+[0-9]{3,}[+\-][0-9]+", piece):
+        out.add(("id", m.group(0)))
+    for m in re.finditer(r"(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])", piece):
+        out.add(("num", m.group(1)))
+
+
+def seam_falsified_tokens(journal, project, permrec, idx):
+    """Tokens the project falsified: the entailment journal's falsified object, plus every
+    backtick-quoted span on a falsification line of the project's perm-record. A token the
+    receipts do carry is not fabricated, and a fragment of a catalog id is graded as the id,
+    so both are dropped - the watchlist stays the fabricated set, not the vocabulary."""
+    raw = set()
+    try:
+        for line in pathlib.Path(journal).read_text().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if project not in json.dumps(rec):
+                continue
+            inner = rec.get("claim", "") if isinstance(rec, dict) else ""
+            try:
+                inner = json.loads(inner) if isinstance(inner, str) else inner
+            except ValueError:
+                inner = {"object": inner}
+            if isinstance(inner, dict):
+                seam_harvest(str(inner.get("object", "")), raw)
+    except OSError:
+        pass
+    try:
+        for line in pathlib.Path(permrec).read_text().split("\n"):
+            if SEAM_STRONG_FALSIFY_RE.search(line):
+                for span in re.findall(r"`([^`]+)`", line):
+                    seam_harvest(span, raw)
+    except OSError:
+        pass
+    blob = pathlib.Path(idx["path"]).read_text()
+    ids = [t for k, t in raw if k == "id"]
+    out = []
+    for kind, tok in raw:
+        if kind == "id":
+            if tok in blob:
+                continue                       # the receipts name this source themselves
+        else:
+            prec = len(tok.split(".")[1]) if "." in tok else 0
+            if seam_num_entailed(float(tok), prec, "e" in tok.lower(), idx):
+                continue
+            if any(tok in i for i in ids):
+                continue
+        out.append((kind, tok))
+    return sorted(out)
+
+
+def check_promotion_seam():
+    """Grade the spine's promoted rows against the receipt index each one cites."""
+    notes, problems, cache, seen = [], [], {}, set()
+    journal = AGENT.parent / "run" / "falsified.jsonl"
+    judged = claims = 0
+    for name in ("STATE.md", "PERM.md"):
+        body = text_of(name)
+        if body is None:
+            continue
+        for lineno, line in enumerate(body.split("\n"), 1):
+            roots = []
+            for m in SEAM_CITE_RE.finditer(line):
+                if m.group(1) not in roots:
+                    roots.append(m.group(1))
+            for root in roots:
+                receipts = pathlib.Path(root) / "run" / "receipts.json"
+                key = str(receipts)
+                if not receipts.exists():
+                    if "run/receipts.json" in line and key not in seen:
+                        seen.add(key)
+                        notes.append(f"NOTE {name}:{lineno} cites {receipts}, absent on disk - "
+                                     "seam skipped for an archived receipt path, not guessed")
+                    continue
+                if key not in cache:
+                    cache[key] = seam_receipt_index(receipts)
+                idx = cache[key]
+                if idx is None:
+                    notes.append(f"NOTE {name}:{lineno} cites {receipts}, which holds no `rows` "
+                                 "index - seam skipped")
+                    continue
+                judged += 1
+                numerals = seam_numerals(line)
+                toks = seam_falsified_tokens(journal, pathlib.Path(root).name,
+                                             pathlib.Path(root) / "perm-record.md", idx)
+                for c in numerals:
+                    if not c["claim"]:
+                        continue
+                    claims += 1
+                    if seam_negated(line, c["s"]) or seam_claim_entailed(line, c, idx):
+                        continue
+                    msg = (f"PROMOTION_SEAM_UNENTAILED {name}:{lineno} numeral {c['tok']!r} is "
+                           f"not a value in {receipts} - the row states a measurement the "
+                           "receipt index does not carry")
+                    if msg not in seen:
+                        seen.add(msg)
+                        problems.append(msg)
+                nums = [c for c in numerals if c["claim"]]
+                for kind, tok in toks:
+                    pat = ((r"(?<![0-9A-Za-z])" + re.escape(tok) + r"(?![0-9A-Za-z])")
+                           if kind == "id" else r"(?<![\d.])" + re.escape(tok) + r"(?![\d.])")
+                    for hit in re.finditer(pat, line):
+                        if kind == "num" and not any(n["s"] <= hit.start() < n["e"]
+                                                     for n in nums):
+                            continue
+                        if seam_negated(line, hit.start()):
+                            continue
+                        msg = (f"FALSIFIED_RESURRECTION {name}:{lineno} {tok!r} is marked "
+                               f"falsified for {pathlib.Path(root).name} and is asserted "
+                               "outside any falsification clause")
+                        if msg not in seen:
+                            seen.add(msg)
+                            problems.append(msg)
+    if not problems:
+        notes.append(f"seam: {judged} row(s) bound to {len([k for k, v in cache.items() if v])} "
+                     f"receipt index(es), {claims} measurement numeral(s) entailed or scoped")
+    return notes, problems
+
+
 GATE_ARG_RE = re.compile(r"^\s*#\s*spine-gate:\s*(?P<cmd>\S.*?)\s*$")
 
 
@@ -1135,7 +1377,7 @@ def script_interpreter(script: pathlib.Path) -> str:
     project as broken; the marker stays the override, the suffix is the fallback.
 
     A script that needs a project venv cannot borrow the spine's interpreter -- chemgym-v2's
-    harness imports rdkit, which lives only in /home/snoop/tools/chemgym_venv, so the sweep
+    harness imports rdkit, which lives only in a project venv (~/tools/chemgym_venv here), so the sweep
     ran it under the system interpreter and scored `ModuleNotFoundError` as a broken project
     while the same file under its own venv passed 158/158. Naming the venv in STATE.md prose
     would leave the sweep's command and the sentence describing it owned by two different
@@ -2133,6 +2375,11 @@ def main():
                          "'path:N-M', 'path:symbol' or 'path::symbol'. RESOLVED or "
                          "MISSING_TARGET (exit 3) - the presence gate cannot catch a name "
                          "that never existed ('-' reads one spec per line from stdin)")
+    ap.add_argument("--check-seam", action="store_true",
+                    help="grade only the promotion seam: every measurement numeral in a"
+                         " STATE.md/PERM.md row that cites a project receipt index must be a"
+                         " value that index carries, and a token the project falsified may"
+                         " appear only inside a falsification clause (exit 1 on a violation)")
     ap.add_argument("--list", action="store_true",
                     help="print the gates --run-harness would run, one path per line, and exit "
                          "without running anything")
@@ -2174,6 +2421,14 @@ def main():
         print(f"referents: {len(specs)} checked, {len(specs) - missing} resolved, "
               f"{missing} missing")
         return 3 if missing else 0
+    if args.check_seam:
+        seam_notes, seam_problems = check_promotion_seam()
+        for n in seam_notes:
+            print(f"  {n}")
+        for q in seam_problems:
+            print(f"  VIOLATION  {q}")
+        print(f"promotion seam: {len(seam_problems)} violation(s)")
+        return 1 if seam_problems else 0
     only = [s for chunk in (args.only or []) for s in chunk.split(",")]
     if only and not args.run_harness:
         ap.error("--only selects gates for --run-harness; pass --run-harness too")
@@ -2292,6 +2547,14 @@ def main():
         print(f"  {n}")
     if not claim_violations and not claim_notes:
         print("  every measured claim in the injected spine names its referent")
+
+    print("== promotion seam ==")
+    seam_notes, seam_problems = check_promotion_seam()
+    for n in seam_notes:
+        print(f"  {n}")
+    for q in seam_problems:
+        print(f"  VIOLATION {q}")
+    problems += seam_problems
 
     print("== fact anchors ==")
     store_now, store_kind = store_binding(args.store)

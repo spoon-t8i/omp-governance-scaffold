@@ -42,10 +42,10 @@ BUND=src/tools/bundle_docs.py
 DOCS=docs
 VEND=harness/vendor/guppi_gate4/run
 SUMS=harness/vendor/SHA256SUMS
-LIVE=/home/snoop/tmp/guppi_gate4/run
+LIVE="${GUPI_LIVE_RUN:-$HOME/tmp/guppi_gate4/run}"
 CGVEND=harness/vendor/chemgym-v2/run
 CGSUMS=harness/vendor/chemgym-v2/SHA256SUMS
-CGLIVE=/home/snoop/Projects/chemgym-v2/run
+CGLIVE="${CHEMGYM_LIVE_RUN:-$HOME/Projects/chemgym-v2/run}"
 N=0; PASS=0; FAIL=0
 chk(){ N=$((N+1)); if [ "$2" = "$3" ]; then PASS=$((PASS+1)); printf 'PASS %s (%s)\n' "$1" "$3"; else FAIL=$((FAIL+1)); printf 'FAIL %s: want %s got %s\n' "$1" "$3" "$2"; fi; }
 yes_(){ chk "$1" "$2" yes; }

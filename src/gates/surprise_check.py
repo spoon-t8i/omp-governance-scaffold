@@ -30,7 +30,12 @@ Detectors (MVP set; all deterministic, no model call):
   SURPRISE_POST_COMPACT_DRIFT     CRITICAL  raw <tool_call> / <function=edit> / <function=write>
                                       XML in a turn after a boundary (H-DEAD-11/19), or a
                                       closed DAG node whose gate script moved after its
-                                      recorded pass (H-DEAD-32)
+                                      recorded pass (H-DEAD-32). The harness writes its own
+                                      turn records, and a record that is nothing but a closed
+                                      tool-call envelope is that serialization, not a leaked
+                                      call, so it is skipped and counted in a note; a call
+                                      truncated mid-envelope or wrapped in prose - the shape
+                                      the corruption actually takes - still fires.
   SURPRISE_TEST_REGRESSION  CRITICAL  a gate command piped through a masking filter without
                                       pipefail, a gate_result that is red or carries no
                                       at_iso stamp (H-DEAD-31), or a gate score that dropped
@@ -80,7 +85,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 TOOL_HOME = Path(__file__).resolve().parent
-DEFAULT_POLICY = TOOL_HOME.parent / "surprise_policy.json"
+# The scaffold ships the policy beside the frozen spine, not beside the gate: a clone that
+# never installs into a home directory still grades against the thresholds it was given.
+DEFAULT_POLICY = TOOL_HOME.parent / "spine" / "surprise_policy.json"
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
 POLICY_DEFAULT = {
@@ -382,7 +389,7 @@ def _norm_target(t):
     """Which file a launcher runs, in a form that survives the directory it was launched from.
 
     A path deeper than two components is named by the directory it lives in plus its name:
-    `python3 harness/x.py` at the repo root and `python3 /home/snoop/Projects/p/harness/x.py` are
+    `python3 harness/x.py` at the repo root and `python3 /home/dev/Projects/p/harness/x.py` are
     one launcher on one target, and counting them apart is how a loop breaker cries wolf on every
     relaunch that merely spells the path differently. Two projects that both keep a `tools/x.py`
     do share an identity; the loop window is one session's working set, so that collision costs a
@@ -1231,6 +1238,38 @@ def gate_stamp(node, pol):
     return None, None
 
 
+XML_TAG_LINE = re.compile(
+    r"^\s*</?(?:tool_call|invoke\b|function\b|parameter\b|arg\b|result\b)[^\n]*>\s*$")
+ENVELOPE_CLOSE = (("tool_call", "</tool_call>"), ("invoke", "</invoke>"),
+                  ("function", "</function>"), ("parameter", "</parameter>"),
+                  ("arg", "</arg>"))
+
+
+def serialized_xml_lines(lines):
+    """1-based line numbers that are harness turn-record serialization, not prose."""
+    ignore = set()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or not XML_TAG_LINE.match(stripped):
+            continue
+        head = stripped.lstrip("< /")
+        for key, closer in ENVELOPE_CLOSE:
+            if not head.startswith(key):
+                continue
+            if stripped.startswith("</"):
+                ignore.add(i + 1)  # a bare close tag belongs to the envelope too
+                break
+            for j in range(i + 1, len(lines)):
+                inner = lines[j].strip()
+                if inner == closer:
+                    ignore.update(range(i + 1, j + 2))
+                    break
+                if not XML_TAG_LINE.match(inner):
+                    break  # prose inside the envelope: leaked, not serialized
+            break
+    return ignore
+
+
 def d_post_compact(repo, pol, ctx, turn_file):
     findings, notes = [], []
     pats = pol["post_compact"]["raw_xml_patterns"]
@@ -1244,10 +1283,20 @@ def d_post_compact(repo, pol, ctx, turn_file):
                 notes.append(f"raw-XML lane: {p} unreadable ({exc.__name__}) - gap, not a pass")
                 text = ""
             hits = []
+            tl = text.splitlines()
+            ignore = serialized_xml_lines(tl)
+            suppressed = 0
             for pat in pats:
-                i = text.find(pat)
-                if i >= 0:
-                    hits.append((pat, text.count(pat), text[:i].count("\n") + 1))
+                seen = [n for n, ln in enumerate(tl, 1) if pat in ln]
+                kept = [n for n in seen if n not in ignore]
+                suppressed += len(seen) - len(kept)
+                if kept:
+                    hits.append((pat, len(kept), kept[0]))
+            if suppressed:
+                notes.append(
+                    f"raw-XML lane: {suppressed} structural line(s) of {p.name} ignored as "
+                    "harness serialization of a tool call, not leaked prose - a truncated "
+                    "envelope or one wrapped in sentences still fires")
             if hits:
                 pat, n, line = hits[0]
                 findings.append(finding(
@@ -2058,10 +2107,17 @@ def selftest(live_pol, opts):
         print("[L2B-SELFTEST-BLOCKED] anchor commit failed - SHA lane cannot be proven")
         return 2
 
+    quiet_turn = base / "quiet-turn.txt"
+    quiet_turn.write_text("[assistant] nothing anomalous here\n", encoding="utf-8")
+
     def run(repo, p, telemetry=None, turn=None):
+        # A case that names no turn file must not fall through to the policy default, which points
+        # at the live session's own transcript: the raw-XML lane would then grade whoever happens
+        # to be running the test, and every mutant would carry an unrelated CRITICAL.
         ns = argparse.Namespace(repo=[str(repo)], policy=None, telemetry=telemetry,
-                                turn_file=turn, json=True, quiet=True, max_blocks=None,
-                                self_test=False, token_url=None, pin_baseline=None)
+                                turn_file=turn or str(quiet_turn), json=True, quiet=True,
+                                max_blocks=None, self_test=False, token_url=None,
+                                pin_baseline=None)
         return scan([repo], p, ns)
 
     def fired(findings, cls, sev=None):
@@ -2069,11 +2125,13 @@ def selftest(live_pol, opts):
 
     cases = []
 
-    def case(cid, cls, repo, p, telemetry=None, turn=None, want=1, probe=""):
+    def case(cid, cls, repo, p, telemetry=None, turn=None, want=1, probe="", note=""):
         """want >= 1: the class must fire that many times, at the expected severity, inside the
         budget. want == 0: the class must NOT fire at all - the negative controls are what stop a
-        detector from being a machine that always screams, and a `>= 0` test would pass them."""
-        fnd, _notes, _gaps = run(repo, p, telemetry=telemetry, turn=turn)
+        detector from being a machine that always screams, and a `>= 0` test would pass them.
+        note: a substring the lane's own notes must carry - a suppression that is never stated is
+        indistinguishable from a lane that never read the file."""
+        fnd, notes, _gaps = run(repo, p, telemetry=telemetry, turn=turn)
         hits = fired(fnd, cls)
         tok = None
         if hits:
@@ -2082,6 +2140,7 @@ def selftest(live_pol, opts):
         ok = (len(hits) == 0) if want == 0 else (
             len(hits) >= want and sev == EXPECTED_SEVERITY[cls]
             and tok is not None and tok <= budget)
+        ok = ok and ((not note) or any(note in n for n in notes))
         cases.append({
             "id": cid, "class": cls, "ok": ok, "want": want, "got": len(hits),
             "sev": sev, "tokens": tok, "fits": (tok is not None and tok <= budget),
@@ -2318,31 +2377,71 @@ def selftest(live_pol, opts):
     case("N08", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel), want=1,
          probe="ORDER_MIN does not transfer across basenames")
 
-    # clean side: the live spine and the closed project must stay dormant
-    cleans = []
-    # The repo lanes are what a clean repo can pass on its own merit. The session lanes are
-    # global by nature - the loop lane sees whatever session is writing telemetry, which right
-    # now is the one running this test - so pin them to a quiet fixture. Scoring a repo's
-    # cleanliness off whoever happens to be executing would make the verdict meaningless.
+    # S12 / N09, the two-sided pair on the raw-XML lane's own blind spot. The harness serializes
+    # the calls it records into the very turn file this lane scans, so a bare substring scan reads
+    # the recorder quoting a call back as the model leaking one - a CRITICAL no session can act
+    # on. N09: a record that is nothing but a closed tool-call envelope stays DORMANT, and the
+    # skip is counted in a note, never silent. S12: an envelope wrapped in sentences - the shape
+    # H-DEAD-11/19 corruption actually takes - still fires CRITICAL.
+    r = mk("s12")
+    turn = base / "s12-serialized.txt"
+    turn.write_text("# turn 2026-11-28T14:51:32Z\n"
+                    "<tool_call>\n<function=read>\n"
+                    '<parameter=path="src/gates/spine_check.py:1-2:raw">\n</parameter>\n'
+                    "</function>\n</tool_call>\n"
+                    "# turn 2026-11-28T15:17:26Z\n"
+                    "whole-file grading of the spine is wrong scope\n", encoding="utf-8")
+    case("N09", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn), want=0,
+         note="harness serialization",
+         probe="serialized turn record is the recorder, not a leaked call")
+    turn = base / "s12-leaked.txt"
+    turn.write_text("# turn 2026-11-28T15:17:26Z\n"
+                    "I will apply it now <tool_call><function=edit>\n"
+                    "and then re-run the gate\n", encoding="utf-8")
+    case("S12", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn),
+         probe="tool_call envelope leaked into prose")
+
+    # clean side: a spine that did nothing wrong must stay dormant on every lane. The session
+    # lanes are global by nature - the loop lane sees whatever session is writing telemetry, which
+    # right now is the one running this test - so they are pinned to a quiet fixture.
     quiet_tel = base / "quiet-events.jsonl"
     quiet_tel.write_text(json.dumps({"t": fresh, "kind": "gate", "cmd":
                                      "python3 harness/quiet_harness.py --self-test"}) + "\n",
                                     encoding="utf-8")
-    quiet_turn = base / "quiet-turn.txt"
-    quiet_turn.write_text("[assistant] nothing anomalous here\n", encoding="utf-8")
+
+    def scan_clean(d):
+        fnd, notes, gaps = scan([d], live_pol, argparse.Namespace(
+            repo=[str(d)], policy=None, telemetry=str(quiet_tel), turn_file=str(quiet_turn),
+            json=True, quiet=True, max_blocks=None, self_test=False, token_url=None,
+            pin_baseline=None))
+        return {"repo": d.name, "surprises": len(fnd),
+                "findings": [f"{f['class']}:{f['subject']}" for f in fnd][:6],
+                "gaps": gaps, "notes": notes[:4]}
+
+    # The verdict rests on a spine this test builds. The repos named in the policy are whatever the
+    # box happens to hold: a clone with no agent home would grade nothing, and drift in somebody's
+    # STATE.md is a wake for them, not a broken detector. They are still scanned, and anything they
+    # wake is printed as an advisory - seen, never counted.
+    clean = base / "clean-spine"
+    (clean / "tools").mkdir(parents=True)
+    (clean / "tools" / "gate.py").write_text("raise SystemExit(0)\n", encoding="utf-8")
+    stamped = (mtime_utc(clean / "tools" / "gate.py")
+               + timedelta(seconds=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (clean / "STATE.md").write_text("# STATE\n\n## Active\n- [x] demo gate green\n",
+                                    encoding="utf-8")
+    (clean / "DAG.json").write_text(json.dumps({"nodes": [{"id": "G1", "status": "done",
+        "gate": "python3 tools/gate.py",
+        "gate_result": {"exit": 0, "at_iso": stamped, "output": "PASS 3/3"}}]}),
+        encoding="utf-8")
+    cleans = [scan_clean(clean)]
+    advisories = []
     for spec in live_pol["default_repos"]:
         for c in (globmod.glob(str(expand(spec))) if any(ch in spec for ch in "*?[")
                   else [str(expand(spec))]):
             d = Path(c)
-            if not (d / "DAG.json").is_file():
+            if not (d / "DAG.json").is_file() or d == clean:
                 continue
-            fnd, notes, gaps = scan([d], live_pol, argparse.Namespace(
-                repo=[str(d)], policy=None, telemetry=str(quiet_tel), turn_file=str(quiet_turn),
-                json=True, quiet=True, max_blocks=None, self_test=False, token_url=None,
-                pin_baseline=None))
-            cleans.append({"repo": d.name, "surprises": len(fnd),
-                           "findings": [f"{f['class']}:{f['subject']}" for f in fnd][:6],
-                           "gaps": gaps, "notes": notes[:4]})
+            advisories.append(scan_clean(d))
 
     # C-lane: the tool's own fail-closed surface. A policy that cannot be read, or a key nobody
     # implemented, must never be reported as a clean scan - that is H-DEAD-31's vacuous pass.
@@ -2382,7 +2481,7 @@ def selftest(live_pol, opts):
     # I-lane: command identity, the loop lane's whole discrimination
     lpn = POLICY_DEFAULT["looping"]
     noise_group = ["python3 -W ignore harness/ceis_harness.py",
-                   "cd /home/snoop/Projects/ceis && python3 harness/ceis_harness.py 2>&1 | tail -20",
+                   "cd /home/dev/Projects/ceis && python3 harness/ceis_harness.py 2>&1 | tail -20",
                    "timeout 900 python3 -B harness/ceis_harness.py",
                    "OMP_TELEMETRY=1 python3 harness/ceis_harness.py > run/log.txt"]
     idents = {fingerprint(c, lpn) for c in noise_group}
@@ -2428,6 +2527,10 @@ def selftest(live_pol, opts):
             print(f"    note: {n}")
         for g in c["gaps"]:
             print(f"    gap: {g}")
+    for c in advisories:
+        if c["surprises"]:
+            print(f"  ADVISORY {c['repo']:<20} {c['surprises']} surprise(s) in a repo outside "
+                  f"this test, not graded: {'; '.join(c['findings'])}")
     kpass = sum(1 for c in cfg if c["ok"])
     for c in cfg:
         print(f"  {c['id']} {'config/identity'::<18} {'PASS' if c['ok'] else 'FAIL':<5} {c['probe']}")
@@ -2449,7 +2552,8 @@ def main(argv=None):
                                  epilog=__doc__.split("Usage:")[-1])
     ap.add_argument("--repo", action="append", default=[],
                     help="project directory to audit (repeatable); default policy default_repos")
-    ap.add_argument("--policy", help="policy JSON (default ~/.omp/agent/surprise_policy.json)")
+    ap.add_argument("--policy", help="policy JSON (default the shipped spine policy, "
+                        "src/spine/surprise_policy.json)")
     ap.add_argument("--telemetry", help="override the event stream for the loop lane")
     ap.add_argument("--turn-file", help="transcript tail to scan for raw tool-call XML")
     ap.add_argument("--json", action="store_true", help="machine-readable output")

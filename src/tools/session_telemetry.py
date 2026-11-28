@@ -141,7 +141,7 @@ def _blocks(payload):
 def slug_candidates(cwd):
     """The directory names omp might have filed this cwd under, best guess first.
 
-    Measured on this box: `/home/snoop/tmp` -> `-tmp`, `/home/snoop/.omp/agent` ->
+    Measured on this box: `$HOME/tmp` -> `-tmp`, `$HOME/.omp/agent` ->
     `-.omp-agent`, `/mnt/data/strata/workspace/Strata` -> `--mnt-data-...-Strata--`. So the
     name is HOME-relative inside $HOME and absolute outside it, and an absolute path loses
     its trailing separator. One rule cannot be read off two samples, so every plausible

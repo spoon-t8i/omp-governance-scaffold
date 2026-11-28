@@ -25,20 +25,25 @@ import json, re, pathlib
 from datetime import datetime
 
 _ap = argparse.ArgumentParser(description='build the scaffold docs pages from receipts')
-_ap.add_argument('--receipts', default='/home/snoop/tmp/guppi_gate4/run/receipts.json')
+_ap.add_argument('--receipts', default=None,
+                 help='guppi_gate4 run/receipts.json (default: the vendored snapshot)')
 _ap.add_argument('--manifest', default=None,
                  help='stale_pre_patch/manifest.json (default: sibling of the receipts file)')
-_ap.add_argument('--chemgym-receipts',
-                 default='/home/snoop/Projects/omp-governance-scaffold/harness/vendor/chemgym-v2/run/receipts.json',
-                 help='chemgym-v2 run/receipts.json (vendored snapshot)')
-_ap.add_argument('--docs', default='/home/snoop/Projects/omp-governance-scaffold/docs')
+_ap.add_argument('--chemgym-receipts', default=None,
+                 help='chemgym-v2 run/receipts.json (default: the vendored snapshot)')
+_ap.add_argument('--docs', default=None,
+                 help="docs directory to write (default: this repo's docs/)")
 _a = _ap.parse_args()
-RJ = _a.receipts
-DOCS = pathlib.Path(_a.docs)
+# A clone must build with no arguments: the vendored snapshots are the defaults, so no
+# caller needs a personal checkout path. docs_gate.sh still passes its own paths.
+REPO = pathlib.Path(__file__).resolve().parents[2]
+RJ = _a.receipts or str(REPO / 'harness/vendor/guppi_gate4/run/receipts.json')
+CG_RJ = _a.chemgym_receipts or str(REPO / 'harness/vendor/chemgym-v2/run/receipts.json')
+DOCS = pathlib.Path(_a.docs or REPO / 'docs')
 MAN_PATH = _a.manifest or str(pathlib.Path(RJ).resolve().parent / 'stale_pre_patch'
                              / 'manifest.json')
 R = json.load(open(RJ))
-CG = json.load(open(_a.chemgym_receipts))
+CG = json.load(open(CG_RJ))
 F, C, D, RF = R['facts'], R['constants'], R['derived'], R['receipt_files']
 _TS = sorted(x['mtime_utc'] for x in RF.values() if x.get('mtime_utc'))
 SPAN_H = (datetime.strptime(_TS[-1], '%Y-%m-%dT%H:%M:%SZ')
@@ -412,7 +417,7 @@ B('# Ten Governance Laws: Turning Agent Prose Into Gates')
 B('')
 B('*Every receipt figure quoted here is read from '
   '`guppi_gate4/run/receipts.json` by the page generator. The laws are enforced by tools in '
-  '`src/` and `/home/snoop/.omp/agent/tools/`, not by reminders in a prompt.*')
+  '`src/` and the operator gate home (`~/.omp/agent/tools/`), not by reminders in a prompt.*')
 B('')
 B('## Tier 1: The High-Level Picture (Plain-English Intuition)')
 B('')

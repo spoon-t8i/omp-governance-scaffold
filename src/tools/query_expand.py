@@ -26,9 +26,9 @@ Usage
   tools/query_expand.py                       # no arguments: usage, exit 0
 
 Defaults
-  --roots   /home/snoop/.omp/agent,/home/snoop/Projects/amber_ascii
+  --roots   ~/.omp/agent,~/Projects/amber_ascii
   --top     5      --window 30 lines (stride window//3)
-  --facts   /home/snoop/.omp/agent/memory.db   (read only with --fact-boost)
+  --facts   ~/.omp/agent/memory.db   (read only with --fact-boost)
   --facts-off  declare facts deliberately unconsulted; contradicts --fact-boost/--facts
   --route      agent (the default pair); factstore (the agent home alone) is the default
                when --fact-boost is passed without --roots; contradicts an explicit --roots
@@ -160,7 +160,7 @@ FACT = 100.0
 FACT_CAP = 3
 FACT_SHOWN = 3
 LIVE_FACT_STATUS = ("active",)  # VS-33: only active steers; load_fact_spans says why
-DEFAULT_FACT_DB = "/home/snoop/.omp/agent/memory.db"
+DEFAULT_FACT_DB = str(pathlib.Path.home() / ".omp" / "agent" / "memory.db")
 AGENT_HOME = pathlib.Path(__file__).resolve().parent.parent
 ROUTES = {"agent": DEFAULT_ROOTS, "factstore": (str(AGENT_HOME),)}
 # schema contract C1: the tie-break reads exactly these three statuses; load says why
