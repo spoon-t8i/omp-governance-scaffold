@@ -14,10 +14,11 @@
 #
 # Self-containment: the receipts documents and the stale-pre-patch manifest the
 # generator reads are vendored under harness/vendor/ (hashes pinned in
-# harness/vendor/SHA256SUMS and harness/vendor/chemgym-v2/SHA256SUMS), so the gate
+# harness/vendor/SHA256SUMS, harness/vendor/chemgym-v2/SHA256SUMS and
+# harness/vendor/guppi_gate5/SHA256SUMS), so the gate
 # runs with no ~/tmp or ~/Projects at all. When a live campaign repo IS on disk the
 # gate additionally asserts byte parity with it and proves it wrote nothing there -
-# guppi_gate4 and chemgym-v2 are read-only to this gate, always.
+# guppi_gate4, guppi_gate5 and chemgym-v2 are read-only to this gate, always.
 #
 # Arms (causal exit contract, same as the guppi gates)
 #   positive / --gate (rc=0)  : every check below passes and both mutant arms exit 1.
@@ -46,6 +47,9 @@ LIVE="${GUPI_LIVE_RUN:-$HOME/tmp/guppi_gate4/run}"
 CGVEND=harness/vendor/chemgym-v2/run
 CGSUMS=harness/vendor/chemgym-v2/SHA256SUMS
 CGLIVE="${CHEMGYM_LIVE_RUN:-$HOME/Projects/chemgym-v2/run}"
+G5VEND=harness/vendor/guppi_gate5/run
+G5SUMS=harness/vendor/guppi_gate5/SHA256SUMS
+G5LIVE="${GUPPI5_LIVE_RUN:-$HOME/Projects/guppi_gate5/run}"
 N=0; PASS=0; FAIL=0
 chk(){ N=$((N+1)); if [ "$2" = "$3" ]; then PASS=$((PASS+1)); printf 'PASS %s (%s)\n' "$1" "$3"; else FAIL=$((FAIL+1)); printf 'FAIL %s: want %s got %s\n' "$1" "$3" "$2"; fi; }
 yes_(){ chk "$1" "$2" yes; }
@@ -55,7 +59,8 @@ yesrc(){ local r; "$@" >/dev/null 2>&1; r=$?; [ "$r" = 0 ] && printf yes || prin
 parses(){ yesrc python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$1"; }
 # tree_digest <dir>: content hash of every file, path-independent.
 tree_digest(){ (cd "$1" && find . -type f | sort | xargs -d '\n' sha256sum | sha256sum) | cut -d' ' -f1; }
-gen(){ python3 "$GEN" --receipts "$VEND/receipts.json" --chemgym-receipts "$CGVEND/receipts.json" --docs "$1"; }
+gen(){ python3 "$GEN" --receipts "$VEND/receipts.json" --chemgym-receipts "$CGVEND/receipts.json" \
+       --guppi5-receipts "$G5VEND/receipts.json" --docs "$1"; }
 
 MODE=pos
 case "${1:-}" in
@@ -80,6 +85,10 @@ if [ "$MODE" = pos ]; then
   # 3b the chemgym snapshot is real JSON and matches its own pinned hashes.
   yes_ 'vendored chemgym receipts.json parses' "$([ -s "$CGVEND/receipts.json" ] && parses "$CGVEND/receipts.json")"
   yes_ 'vendored chemgym snapshot matches SHA256SUMS' "$( (cd "$CGVEND" && yesrc sha256sum -c --status "$REPO/$CGSUMS") )"
+  # 3c the guppi_gate5 promotion seam parses and matches its own pinned hashes.
+  yes_ 'vendored guppi5 receipts.json parses' "$([ -s "$G5VEND/receipts.json" ] && parses "$G5VEND/receipts.json")"
+  yes_ 'vendored guppi5 gate receipt parses' "$([ -s "$G5VEND/g05_gate_receipt.json" ] && parses "$G5VEND/g05_gate_receipt.json")"
+  yes_ 'vendored guppi5 snapshot matches SHA256SUMS' "$( (cd "$G5VEND" && yesrc sha256sum -c --status "$REPO/$G5SUMS") )"
   # 4 live parity, when the campaign repo is on disk.
   LIVE_BEFORE=''
   if [ -d "$LIVE" ]; then
@@ -97,6 +106,15 @@ if [ "$MODE" = pos ]; then
          "$([ "$(sha "$CGLIVE/receipts.json")" = "$(sha "$CGVEND/receipts.json")" ] && printf yes || printf no)"
   else
     printf 'INFO live chemgym repo absent: vendored snapshot is authoritative\n'
+  fi
+  G5LIVE_BEFORE=''
+  if [ -d "$G5LIVE" ]; then
+    G5LIVE_BEFORE="$(sha "$G5LIVE/receipts.json") $(sha "$G5LIVE/g05_gate_receipt.json")"
+    yes_ 'live guppi5 seam snapshot == vendored snapshot' \
+         "$([ "$(sha "$G5LIVE/receipts.json") $(sha "$G5LIVE/g05_gate_receipt.json")" = \
+               "$(sha "$G5VEND/receipts.json") $(sha "$G5VEND/g05_gate_receipt.json")" ] && printf yes || printf no)"
+  else
+    printf 'INFO live guppi_gate5 repo absent: vendored snapshot is authoritative\n'
   fi
   # 5 the gate must not regenerate in place: committed docs byte-stable throughout.
   DOCS_BEFORE="$(tree_digest "$DOCS")"
@@ -117,7 +135,7 @@ if [ "$MODE" = pos ]; then
   yes_ 'bundle_docs --check current on fresh copy' "$(yesrc python3 "$BUND" --docs "$TMP/a" --check)"
   # 9 leak guard, independent of the generator's own assertion.
   yes_ 'generated pages carry no placeholder or null leak' \
-       "$(yesrc python3 - "$TMP/a/cfs-gate4.md" "$TMP/a/omp-governance.md" "$TMP/a/chemgym-v2.md" <<'PY'
+       "$(yesrc python3 - "$TMP/a/cfs-gate4.md" "$TMP/a/omp-governance.md" "$TMP/a/chemgym-v2.md" "$TMP/a/cfs-g5.md" <<'PY'
 import pathlib, re, sys
 bad = []
 for p in sys.argv[1:]:
@@ -146,13 +164,17 @@ PY
     yes_ 'chemgym-v2 snapshot untouched' \
          "$([ "$(sha "$CGLIVE/receipts.json")" = "$CGLIVE_BEFORE" ] && printf yes || printf no)"
   fi
+  if [ -n "$G5LIVE_BEFORE" ]; then
+    yes_ 'guppi_gate5 snapshot untouched' \
+         "$([ "$(sha "$G5LIVE/receipts.json") $(sha "$G5LIVE/g05_gate_receipt.json")" = "$G5LIVE_BEFORE" ] && printf yes || printf no)"
+  fi
 fi
 
 # ------------------------------------------------- mutant: stale generated numeral
 if [ "$MODE" = numeral ]; then
   cp -a "$DOCS" "$TMP/m"; cp -a "$DOCS" "$TMP/r"
   gen "$TMP/r" >/dev/null
-  for page in cfs-gate4.md chemgym-v2.md; do
+  for page in cfs-gate4.md chemgym-v2.md cfs-g5.md; do
   before="$(sha "$TMP/m/$page")"
   # Value-agnostic perturbation: bump the last digit of the first 4-decimal numeral
   # the generator emitted. Refuses to write a byte-identical file.
@@ -204,6 +226,13 @@ if [ "$MODE" = sync ]; then
   yes_ 're-pinned SHA256SUMS verifies'  "$( (cd "$VEND" && yesrc sha256sum -c --status "$REPO/$SUMS") )"
   yes_ 'synced chemgym receipts.json parses'   "$(parses "$CGVEND/receipts.json")"
   yes_ 're-pinned chemgym SHA256SUMS verifies' "$( (cd "$CGVEND" && yesrc sha256sum -c --status "$REPO/$CGSUMS") )"
+  [ -d "$G5LIVE" ] || { echo "sync-vendor: no live guppi_gate5 repo at $G5LIVE"; echo "passed: 0 failed: 1"; echo "checks: 1"; exit 1; }
+  mkdir -p "$G5VEND"
+  cp "$G5LIVE/receipts.json" "$G5VEND/receipts.json"
+  cp "$G5LIVE/g05_gate_receipt.json" "$G5VEND/g05_gate_receipt.json"
+  ( cd "$G5VEND" && sha256sum receipts.json g05_gate_receipt.json ) > "$G5SUMS"
+  yes_ 'synced guppi5 receipts.json parses'   "$(parses "$G5VEND/receipts.json")"
+  yes_ 're-pinned guppi5 SHA256SUMS verifies' "$( (cd "$G5VEND" && yesrc sha256sum -c --status "$REPO/$G5SUMS") )"
 fi
 
 echo "passed: $PASS failed: $FAIL"

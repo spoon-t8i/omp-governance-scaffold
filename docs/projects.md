@@ -74,6 +74,28 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 * [ChemGym-v2: Physics-Benched Chemistry Environments](chemgym-v2.md) - 5 gym-style chemistry benches with library-read physics, SARSA dominant on 5/5 benches, 158/158 physics checks and 23/23 mutant controls caught.
 <!-- END GENERATED: chemgym-entry -->
 
+<!-- BEGIN GENERATED: gate5-entry -->
+## 6. CFS Gate 5 &mdash; The Promotion Seam (`guppi_gate5`)
+
+* **What it is:** whether a 2-bit GUPPI backend may be promoted to a real coherent-fold search, decided on
+7 staged slices (12.07 GiB,
+6 at 2 bit and 1 at 8 bit) under a pre-registered contract.
+* **The verdict:** `z_crit = 7.392` fitted on the null's own
+1,200 draws; 63 of
+63 locks vetoed against matched blank-sky windows,
+0 standing, while a planted drift beacon is still recovered at
+`116.7043`.
+* **Governance under load:** `30`/`0`
+gate checks with `3` of
+`3` mutants fired inside
+`78` mutant-arm checks; the published A7 surrogate bar
+`8.1312` is failed by
+`9.6962` and the FAIL is published, not re-tuned.
+* **Receipt seam:** `2,427` rows, one per numeral, each carrying the receipt path it was sliced
+from; the vendored snapshot is pinned by `harness/vendor/SHA256SUMS` and the docs gate regenerates the page from it.
+<!-- END GENERATED: gate5-entry -->
+
+
 ---
 
 ## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine

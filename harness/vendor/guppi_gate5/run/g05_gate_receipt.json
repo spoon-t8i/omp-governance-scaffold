@@ -1,0 +1,61 @@
+{
+ "arms": {
+  "base": {
+   "checks": 30,
+   "exit_code_expected": 0,
+   "failures": 0,
+   "log": "logs/g05_mutbase.log",
+   "log_bytes": 2306,
+   "log_sha256": "93efff04393a7b78ea1bcbde4b20d076b665752a73863cae570444c68595c850",
+   "mode": "base",
+   "verdict": "GATE PASS"
+  },
+  "shuffle": {
+   "checks": 20,
+   "exit_code_expected": 1,
+   "failures": 0,
+   "log": "logs/g05_mutshuffled-pointing.log",
+   "log_bytes": 1682,
+   "log_sha256": "d7b66a9c07bfecf6615a14cd86c8a016b36e5657614668d084af7653af8e30dd",
+   "mode": "shuffle",
+   "verdict": "MUTANT CONTROL FIRED (gate rejects the corruption)"
+  },
+  "stale": {
+   "checks": 29,
+   "exit_code_expected": 1,
+   "failures": 0,
+   "log": "logs/g05_mutstale-threshold.log",
+   "log_bytes": 2422,
+   "log_sha256": "368f8ddff82844400ca88d9a60bdc328ce0e683e86ebeb8687b14c249aa644eb",
+   "mode": "stale",
+   "verdict": "MUTANT CONTROL FIRED (gate rejects the corruption)"
+  },
+  "veto": {
+   "checks": 29,
+   "exit_code_expected": 1,
+   "failures": 0,
+   "log": "logs/g05_mutbroken-veto.log",
+   "log_bytes": 2488,
+   "log_sha256": "7f6ee7c1430d4b235896ac6a628c66291d94bb5cb76b561f5a3a83b1683160eb",
+   "mode": "veto",
+   "verdict": "MUTANT CONTROL FIRED (gate rejects the corruption)"
+  }
+ },
+ "artifact": "gate verdict receipt",
+ "gate": "CFS-G5",
+ "harness": "harness/g05_gate.sh",
+ "harness_sha256": "6b7db6b4ec56ed61f6b880075f20debcabac342ead68c223c75370e7c39ba51a",
+ "summary": {
+  "baseline_verdict": "GATE PASS",
+  "checks_failed": 0,
+  "checks_passed": 30,
+  "mutant_checks_total": 78,
+  "mutants_expected": 3,
+  "mutants_fired": 3
+ },
+ "verdict": {
+  "all_mutants_fire": true,
+  "baseline_pass": true,
+  "gate_clean": true
+ }
+}

@@ -18,10 +18,10 @@ Contract
 
 Modes
   make_docs_pages.py [--receipts PATH] [--manifest PATH] [--docs DIR]
-                     [--chemgym-receipts PATH]
+                     [--chemgym-receipts PATH] [--guppi5-receipts PATH]
 """
 import argparse
-import json, re, pathlib
+import json, os, re, pathlib
 from datetime import datetime
 
 _ap = argparse.ArgumentParser(description='build the scaffold docs pages from receipts')
@@ -31,6 +31,8 @@ _ap.add_argument('--manifest', default=None,
                  help='stale_pre_patch/manifest.json (default: sibling of the receipts file)')
 _ap.add_argument('--chemgym-receipts', default=None,
                  help='chemgym-v2 run/receipts.json (default: the vendored snapshot)')
+_ap.add_argument('--guppi5-receipts', default=None,
+                 help='guppi_gate5 promotion-seam run/receipts.json (default: the vendored snapshot)')
 _ap.add_argument('--docs', default=None,
                  help="docs directory to write (default: this repo's docs/)")
 _a = _ap.parse_args()
@@ -39,11 +41,14 @@ _a = _ap.parse_args()
 REPO = pathlib.Path(__file__).resolve().parents[2]
 RJ = _a.receipts or str(REPO / 'harness/vendor/guppi_gate4/run/receipts.json')
 CG_RJ = _a.chemgym_receipts or str(REPO / 'harness/vendor/chemgym-v2/run/receipts.json')
+G5_RJ = _a.guppi5_receipts or str(REPO / 'harness/vendor/guppi_gate5/run/receipts.json')
 DOCS = pathlib.Path(_a.docs or REPO / 'docs')
 MAN_PATH = _a.manifest or str(pathlib.Path(RJ).resolve().parent / 'stale_pre_patch'
                              / 'manifest.json')
 R = json.load(open(RJ))
 CG = json.load(open(CG_RJ))
+G5 = json.load(open(G5_RJ))
+assert G5['n_rows'] == len(G5['rows']), 'guppi_gate5 seam: n_rows != len(rows)'
 F, C, D, RF = R['facts'], R['constants'], R['derived'], R['receipt_files']
 _TS = sorted(x['mtime_utc'] for x in RF.values() if x.get('mtime_utc'))
 SPAN_H = (datetime.strptime(_TS[-1], '%Y-%m-%dT%H:%M:%SZ')
@@ -897,3 +902,518 @@ _ix = (DOCS / 'index.html').read_text()
 assert 'chemgym-v2.html' in _ix, 'index.html lost the chemgym card'
 assert fmt(DOM['value'], 0) in _ix, 'index card lost the dominance verdict'
 print('chemgym-v2 page guard: ok')
+
+# ---------------------------------------------------------------- guppi_gate5 page
+# Gate 5 publishes a promotion seam instead of a facts/constants/derived triple: `rows`
+# holds one dotted entry per numeral, each carrying the receipt path it was sliced from,
+# and `index` records the naming and slicing rules. Every numeral below is read through
+# `graw`/`gnum`, and the page prints the rules, the row count and the seam digest so a
+# clone can re-derive each numeral from the vendored snapshot alone.
+GF = G5['rows']
+
+def graw(p):
+    if p not in GF:
+        raise KeyError(f'guppi_gate5 seam row absent: {p}')
+    return GF[p]['value']
+
+def gnum(p, nd=4):
+    s = graw(p)
+    try:
+        return fmt(int(s), 0)
+    except ValueError:
+        return gtrim(fmt(float(s), nd))
+
+
+def gtrim(s):
+    """A rendered numeral keeps only the digits the receipt justifies."""
+    if '.' not in s:
+        return s
+    t = s.rstrip('0').rstrip('.')
+    return t if t not in ('', '-') else s
+
+
+def gsci(p):
+    """Small magnitudes keep their exponent: 3.1e-06 must not render as 0.0000."""
+    v = float(graw(p))
+    return f'{v:.4g}' if 0 < abs(v) < 1e-3 else gnum(p, 6)
+
+
+
+def gsrc(p):
+    return GF[p]['src']
+
+def gopt(p, nd=4):
+    return gnum(p, nd) if p in GF else 'n/a'
+
+
+def gns(frag):
+    return sorted({k.split(':', 1)[0] for k in GF if k.split(':', 1)[0].startswith(frag)})
+
+def ggrid(namespaces, cols, nd=4, label='namespace', cut='g05_'):
+    return table([label] + [f'`{c}`' for c in cols],
+                 [(f'`{ns[len(cut):]}`',) + tuple(gopt(ns + ':' + c, nd) for c in cols)
+                  for ns in namespaces])
+
+
+
+def glist(rows, nd=4, label='seam row'):
+    pre = os.path.commonprefix(list(rows))
+    cut = pre[:pre.rfind(':') + 1] if ':' in pre else pre
+    return table([label, 'value'], [(f'`{r[len(cut):]}`', gnum(r, nd)) for r in rows])
+
+
+
+# prose numerals are pinned here: a renamed seam row fails the build, not the page
+GNEED = (
+ 'g05_zcrit_calibration:zcrit', 'g05_zcrit_calibration:floor', 'g05_zcrit_calibration:alpha',
+ 'g05_zcrit_calibration:n_eff', 'g05_zcrit_calibration:pool/n_draws', 'g05_zcrit_calibration:pool/n_trials',
+ 'g05_zcrit_calibration:pool/windows', 'g05_zcrit_calibration:pool/n_pointings',
+ 'g05_zcrit_calibration:pool_stats/n', 'g05_zcrit_calibration:pool_stats/min',
+ 'g05_zcrit_calibration:pool_stats/median', 'g05_zcrit_calibration:pool_stats/p95',
+ 'g05_zcrit_calibration:pool_stats/max',
+ 'g05_zcrit_calibration:fit_all/a', 'g05_zcrit_calibration:fit_all/b', 'g05_zcrit_calibration:fit_all/n_tail',
+ 'g05_zcrit_calibration:fit_all/z_tail_min', 'g05_zcrit_calibration:fit_all/z_tail_max',
+ 'g05_zcrit_calibration:zcrit_all_fit', 'g05_zcrit_calibration:zcrit_off_fit',
+ 'g05_zcrit_calibration:empirical_check/draws_ge_floor', 'g05_zcrit_calibration:empirical_check/draws_ge_zcrit',
+ 'g05_zcrit_calibration:empirical_check/expected_under_fit', 'g05_zcrit_calibration:empirical_check/max_off_draw',
+ 'g05_zcrit_calibration:surrogate/n', 'g05_zcrit_calibration:surrogate/max',
+ 'g05_zcrit_calibration:surrogate/draws_ge_floor', 'g05_zcrit_calibration:surrogate/draws_ge_zcrit',
+ 'g05_zcrit_calibration:surrogate/zcrit_surrogate_fit', 'g05_zcrit_calibration:surrogate/zcrit_bar_1p10',
+ 'g05_zcrit_calibration:drift_diagnostic/pool/n_draws', 'g05_zcrit_calibration:drift_diagnostic/median',
+ 'g05_zcrit_calibration:drift_diagnostic/max', 'g05_zcrit_calibration:drift_diagnostic/fit/z_tail_min',
+ 'g05_zcrit_calibration:drift_diagnostic/fit/z_tail_max',
+ 'g05_zcrit_calibration:drift_diagnostic/zcrit_if_pooled_fit_were_used',
+ 'g05_veto_base:n_on_locks', 'g05_veto_base:n_off_locks', 'g05_veto_base:n_vetoed',
+ 'g05_veto_base:n_standing', 'g05_veto_base:z_crit',
+ 'g05_veto_base:on_locks.z_on.len', 'g05_veto_base:on_locks.z_on.max', 'g05_veto_base:on_locks.z_on.min',
+ 'g05_veto_base:on_locks.off_z_at_trial.max', 'g05_veto_base:on_locks.off_z_at_trial.min',
+ 'g05_veto_base:on_locks.freq_hz.min', 'g05_veto_base:on_locks.freq_hz.max',
+ 'g05_veto_base:on_locks.trial_index.max', 'g05_veto_base:on_locks.bin.max',
+ 'g05_veto_base:off_locks.z.max', 'g05_veto_base:off_locks.z.min',
+ 'g05_veto_base:on_locks.off_z_at_bin.min', 'g05_veto_base:on_locks.off_z_at_bin.max',
+ 'g05_veto_base:on_locks.off_window_at_trial.max',
+ 'g05_veto_ctrl:n_on_locks', 'g05_veto_ctrl:n_off_locks', 'g05_veto_ctrl:n_vetoed', 'g05_veto_ctrl:n_standing',
+ 'g05_beacon_probe:summary/min_z_delta_on', 'g05_beacon_probe:summary/max_off_z_at_beacon_cell',
+ 'g05_beacon_probe:summary/neighbour_z_delta_at_cell', 'g05_beacon_probe:summary/max_bin_offset',
+ 'g05_beacon_probe:injection/drift_hz', 'g05_beacon_probe:injection/at_s', 'g05_beacon_probe:injection/width_s',
+ 'g05_beacon_probe:injection/snr', 'g05_beacon_probe:injection/tone_hz', 'g05_beacon_probe:wall_s',
+ 'g05_beacon_probe:workers', 'g05_beacon_probe:drift_chunks', 'g05_beacon_probe:window_blocks_drift',
+ 'g05_parity_full:bar_peak_rss_mib', 'g05_parity_full:peak_rss_mib', 'g05_parity_full:rss_mib_now',
+ 'g05_parity_full:bar_norm_diff', 'g05_parity_full:batch2d/speedup', 'g05_parity_full:batch2d/wall_ref_s',
+ 'g05_parity_full:batch2d/wall_batch_s', 'g05_parity_full:batch2d/norm_diff',
+ 'g05_parity_full:workload/speedup', 'g05_parity_full:workload/workers_1', 'g05_parity_full:workload/workers_12',
+ 'g05_parity_full:workload/pool', 'g05_parity_full:workload/channels', 'g05_parity_full:workload/reps',
+ 'g05_parity_full:naive_dft/dm_norm', 'g05_parity_full:naive_dft/drift_norm', 'g05_parity_full:naive_dft/n',
+ 'g05_parity_full:worst/parity_f32', 'g05_parity_full:worst/parity_f64', 'g05_parity_full:worst/dtype_f32',
+ 'g05_parity_full:n', 'g05_parity_full:workers', 'g05_parity_full:dm', 'g05_parity_full:fdot',
+ 'g05_checkpoint_phase01:staged_bytes_total', 'g05_checkpoint_phase01:contract_byte_budget_per_pointing',
+ 'g05_checkpoint_phase01:contract_block_count_per_pointing',
+ 'g05_checkpoint_phase01:verdict/slices_staged', 'g05_checkpoint_phase01:verdict/documented_anomalies',
+ 'g05_prereg:calibration/alpha', 'g05_prereg:calibration/floor', 'g05_prereg:calibration/n_eff',
+ 'g05_prereg:calibration/n_eff_by_arm/dm', 'g05_prereg:calibration/n_eff_by_arm/drift',
+ 'g05_prereg:windows/n_pointings', 'g05_prereg:windows/windows_per_pointing',
+ 'g05_prereg:windows/window_blocks', 'g05_prereg:windows/windows_per_pointing_drift',
+ 'g05_prereg:windows/window_blocks_drift',
+ 'g05_prereg:positive_control/dm/snr', 'g05_prereg:positive_control/dm/dm',
+ 'g05_prereg:positive_control/dm/tone_hz', 'g05_prereg:positive_control/dm/width_s',
+ 'g05_prereg:positive_control/dm/at_s',
+ 'g05_prereg:positive_control/drift/snr', 'g05_prereg:positive_control/drift/drift_hz',
+ 'g05_prereg:positive_control/drift/at_s', 'g05_prereg:positive_control/drift/width_s',
+ 'g05_impulse_census:z_max_on', 'g05_impulse_census:z_max_off', 'g05_impulse_census:n_gt20_on',
+ 'g05_impulse_census:n_gt20_off', 'g05_impulse_census:seconds', 'g05_impulse_census:blocks_per_pointing',
+ 'g05_spectral_census:on_hot_bins', 'g05_spectral_census:off_hot_bins', 'g05_spectral_census:shared_hot_bins',
+ 'g05_spectral_census:hot_z', 'g05_spectral_census:shared_frac_of_on',
+ 'g05_engine_1blk:peak_rss_mib', 'g05_engine_1blk:family_max/dm_full', 'g05_engine_1blk:family_max/drift_full',
+ 'g05_engine_1blk:wall_s', 'g05_engine_1blk:workers',
+ 'g05_bitorder_probe:fftlen', 'g05_bitorder_probe:nchan', 'g05_bitorder_probe:npol',
+ 'g05_bitorder_probe:nt', 'g05_bitorder_probe:pfb_over',
+ 'g05_statistic_probes:elapsed_s', 'g05_statistic_probes:workers',
+ 'g05_gate_receipt:summary/checks_passed', 'g05_gate_receipt:summary/checks_failed',
+ 'g05_gate_receipt:summary/mutant_checks_total', 'g05_gate_receipt:summary/mutants_expected',
+ 'g05_gate_receipt:summary/mutants_fired',
+ 'derived.slice_bytes_all', 'derived.slice_bytes_all_gib', 'derived.slice_bytes_max_gib',
+ 'derived.slice_bytes_min_gib', 'derived.slice_bytes_on', 'derived.slice_bytes_off',
+ 'derived.drift_tau_s', 'derived.natural_res_hz_s', 'derived.fdot_span_cells', 'derived.fdot_step_cells',
+ 'derived.surro_margin_factor', 'derived.target_v_mag',
+)
+for _p in GNEED:
+    if _p not in GF:
+        raise SystemExit(f'make_docs_pages: guppi_gate5 seam lacks {_p!r}')
+
+VETO_NS = gns('g05_veto_')
+SWEEP_NS = gns('g05_sweep_')
+SLICE_NS = gns('g05_slice_audit_')
+ARMS = sorted({k.split('/')[1] for k in GF if k.startswith('g05_gate_receipt:arms/')})
+N_SLICE_2BIT = sum(1 for ns in SLICE_NS if graw(ns + ':header/NBITS') == '2')
+N_SLICE_8BIT = sum(1 for ns in SLICE_NS if graw(ns + ':header/NBITS') == '8')
+LOCK_SPAN_HZ = float(graw('g05_veto_base:on_locks.freq_hz.max')) - float(graw('g05_veto_base:on_locks.freq_hz.min'))
+SURRO_FAIL = float(graw('g05_zcrit_calibration:surrogate/zcrit_surrogate_fit')) > \
+             float(graw('g05_zcrit_calibration:surrogate/zcrit_bar_1p10'))
+BEACON_IS_PREREG = all(float(graw(f'g05_beacon_probe:injection/{k}')) ==
+                       float(graw(f'g05_prereg:positive_control/drift/{k}'))
+                       for k in ('drift_hz', 'at_s', 'snr', 'width_s', 'tone_hz', 'dm'))
+
+K = []
+Q = K.append
+Q('---')
+Q('layout: default')
+Q(f'title: "CFS Gate 5: The Promotion Seam - {gnum("g05_veto_base:n_on_locks", 0)} RFI Locks, '
+  f'{gnum("g05_veto_base:n_standing", 0)} Standing"')
+Q('---')
+Q('')
+Q(f'# {G5["gate"]}: The Promotion Seam &mdash; {gnum("g05_veto_base:n_on_locks", 0)} RFI Locks, '
+  f'{gnum("g05_veto_base:n_standing", 0)} Standing')
+Q('')
+Q(f'> *Every numeral here is read from `{G5["project"]}`\'s promotion seam, `run/receipts.json`: '
+  f'{fmt(G5["n_rows"], 0)} rows, one per numeral, each carrying the receipt path it was sliced from. '
+  f'The vendored snapshot is `harness/vendor/guppi_gate5/run/receipts.json` '
+  f'(`content_sha256` `{G5["content_sha256"][:16]}`&hellip;); the arbiter is `{G5["contract"]}`.*')
+Q('')
+Q('## Tier 1 &mdash; what happened, in plain language')
+Q('')
+Q(f'- **The claim is a promotion, not a discovery.** Gate 5 asks whether a 2-bit GUPPI backend can be '
+  f'promoted to a real coherent-fold search: {gnum("g05_checkpoint_phase01:verdict/slices_staged", 0)} slices, '
+  f'{gnum("derived.slice_bytes_all_gib", 2)} GiB, {N_SLICE_2BIT} of them 2-bit and {N_SLICE_8BIT} an 8-bit '
+  f'pulsar calibration slice, all read through the same engine.')
+Q(f'- **The threshold was fitted, not typed.** `z_crit = {gnum("g05_zcrit_calibration:zcrit", 3)}` comes from an '
+  f'exponential tail fit on the null\'s own {gnum("g05_zcrit_calibration:pool/n_draws", 0)} draws '
+  f'(largest {gnum("g05_zcrit_calibration:pool_stats/max", 4)}), above the pre-registered floor of '
+  f'{gnum("g05_zcrit_calibration:floor", 1)}.')
+Q(f'- **The search found {gnum("g05_veto_base:n_on_locks", 0)} candidate locks &mdash; and kept none.** All '
+  f'{gnum("g05_veto_base:n_vetoed", 0)} are RFI: each sits at a trial whose blank-sky window shows '
+  f'z&nbsp;=&nbsp;{gnum("g05_veto_base:on_locks.off_z_at_trial.max", 4)} at the same trial, and the '
+  f'{gnum("g05_veto_base:n_on_locks", 0)} locks span only {fmt(LOCK_SPAN_HZ, 2)} Hz. '
+  f'**{gnum("g05_veto_base:n_standing", 0)} standing.**')
+Q(f'- **A planted signal still survives that veto.** The drift beacon '
+  f'({gnum("g05_beacon_probe:injection/drift_hz", 2)} Hz/s at '
+  f'{gnum("g05_beacon_probe:injection/at_s", 3)} s, SNR {gnum("g05_beacon_probe:injection/snr", 2)}) is recovered '
+  f'with an ON-minus-OFF z delta of at least {gnum("g05_beacon_probe:summary/min_z_delta_on", 4)}, while the same '
+  f'cell in blank sky reaches {gnum("g05_beacon_probe:summary/max_off_z_at_beacon_cell", 4)}.')
+Q(f'- **One published control failed, and the failure is kept.** Amendment A7\'s surrogate-pooled fit gives '
+  f'z_crit&nbsp;=&nbsp;{gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)}, above the '
+  f'{gnum("derived.surro_margin_factor", 2)}&times; bar of '
+  f'{gnum("g05_zcrit_calibration:surrogate/zcrit_bar_1p10", 4)} &mdash; a recorded '
+  f'{"FAIL" if SURRO_FAIL else "pass"}, not a re-tuned threshold.')
+Q(f'- **The engine holds its ceiling.** Peak RSS {gnum("g05_parity_full:peak_rss_mib", 1)} MiB against a '
+  f'{gnum("g05_parity_full:bar_peak_rss_mib", 0)} MiB bar on {gnum("g05_parity_full:workers", 0)} workers, with '
+  f'the batched 2-D pass {gnum("g05_parity_full:batch2d/speedup", 3)}&times; faster than the reference.')
+Q(f'- **The gate is {gnum("g05_gate_receipt:summary/checks_passed", 0)}/'
+  f'{gnum("g05_gate_receipt:summary/checks_failed", 0)} with '
+  f'{gnum("g05_gate_receipt:summary/mutants_fired", 0)} of '
+  f'{gnum("g05_gate_receipt:summary/mutants_expected", 0)} mutants fired across '
+  f'{gnum("g05_gate_receipt:summary/mutant_checks_total", 0)} mutant-arm checks.**')
+Q('')
+Q('## Tier 2 &mdash; the receipts, in context')
+Q('')
+Q('### 1 The seam: one row per numeral')
+Q('')
+Q(f'The seam is the artifact a reviewer audits: {fmt(G5["n_rows"], 0)} rows sliced from '
+  f'{len(G5["index"]["sources"])} receipts, named and derived by the rules below, so the page can be checked '
+  f'against the snapshot without a personal checkout.')
+Q('')
+Q(table(['seam field', 'value'],
+        [('`gate`', f'`{G5["gate"]}`'), ('`project`', f'`{G5["project"]}`'),
+         ('`n_rows`', fmt(G5['n_rows'], 0)), ('`contract`', f'`{G5["contract"]}`'),
+         ('`content_sha256`', f'`{G5["content_sha256"]}`'),
+         ('`index/sources` (receipts sliced)', fmt(len(G5['index']['sources']), 0))]))
+Q('')
+Q(table(['index rule', 'text'], [(f'`{k}`', f'`{G5["index"][k]}`')
+                                 for k in sorted(G5['index']) if k != 'sources']))
+Q('')
+Q('### 2 The threshold: z_crit from the null\'s own tail')
+Q('')
+Q(f'The pre-registration fixes a floor of {gnum("g05_prereg:calibration/floor", 1)}, a tail-fit level of '
+  f'{gnum("g05_prereg:calibration/alpha")}, and an effective independent-draw count of '
+  f'{gnum("g05_prereg:calibration/n_eff", 0)} &mdash; '
+  f'{gnum("g05_prereg:calibration/n_eff_by_arm/dm", 0)} for the DM arm and '
+  f'{gnum("g05_prereg:calibration/n_eff_by_arm/drift", 0)} for the drift arm, because the arms are not equally '
+  f'correlated; the calibration record\'s own `n_eff` below is the DM pool it was fitted on. The window grid '
+  f'is {gnum("g05_prereg:windows/n_pointings", 0)} pointings &times; '
+  f'{gnum("g05_prereg:windows/windows_per_pointing", 0)} windows of '
+  f'{gnum("g05_prereg:windows/window_blocks", 0)} blocks '
+  f'({gnum("g05_prereg:windows/windows_per_pointing_drift", 0)} &times; '
+  f'{gnum("g05_prereg:windows/window_blocks_drift", 0)} for the drift arm).')
+Q('')
+Q(glist(['g05_zcrit_calibration:pool/n_draws', 'g05_zcrit_calibration:pool/n_trials',
+         'g05_zcrit_calibration:pool/n_pointings', 'g05_zcrit_calibration:pool/windows',
+         'g05_zcrit_calibration:pool_stats/n', 'g05_zcrit_calibration:pool_stats/min',
+         'g05_zcrit_calibration:pool_stats/median', 'g05_zcrit_calibration:pool_stats/p95',
+         'g05_zcrit_calibration:pool_stats/max'], 4))
+Q('')
+Q(f'The fit is taken on the tail only &mdash; {gnum("g05_zcrit_calibration:fit_all/n_tail", 0)} draws from '
+  f'{gnum("g05_zcrit_calibration:fit_all/z_tail_min", 4)} to '
+  f'{gnum("g05_zcrit_calibration:fit_all/z_tail_max", 4)}, exponential '
+  f'`a*exp(-b*z)` with `a`&nbsp;=&nbsp;{gnum("g05_zcrit_calibration:fit_all/a", 4)} and '
+  f'`b`&nbsp;=&nbsp;{gnum("g05_zcrit_calibration:fit_all/b", 4)}. The empirical check closes the loop: '
+  f'{gnum("g05_zcrit_calibration:empirical_check/draws_ge_floor", 0)} draws exceed the floor, '
+  f'{gnum("g05_zcrit_calibration:empirical_check/expected_under_fit", 4)} are expected under the fit, and '
+  f'{gnum("g05_zcrit_calibration:empirical_check/draws_ge_zcrit", 0)} reach `z_crit` &mdash; the tail is thin '
+  f'exactly where the claim needs it thin.')
+Q('')
+Q(glist(['g05_zcrit_calibration:floor', 'g05_zcrit_calibration:alpha', 'g05_zcrit_calibration:n_eff',
+         'g05_zcrit_calibration:zcrit', 'g05_zcrit_calibration:zcrit_all_fit',
+         'g05_zcrit_calibration:zcrit_off_fit'], 4))
+Q('')
+Q('### 3 The surrogate that failed the published bar')
+Q('')
+Q(f'Amendment A7 asks whether a surrogate pool &mdash; {gnum("g05_zcrit_calibration:surrogate/n", 0)} phase-randomised '
+  f'draws, largest {gnum("g05_zcrit_calibration:surrogate/max", 4)} &mdash; would have set a different threshold. It '
+  f'would: its own tail fit gives '
+  f'{gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)}, and the bar the amendment published is '
+  f'{gnum("derived.surro_margin_factor", 2)}&times; the adopted '
+  f'`z_crit` = {gnum("g05_zcrit_calibration:surrogate/zcrit_bar_1p10", 4)}. '
+  f'{gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)} exceeds it, so the surrogate-pooled threshold '
+  f'is rejected and the adopted value stays '
+  f'{gnum("g05_zcrit_calibration:zcrit", 3)}. The surrogate pool itself is not quiet: '
+  f'{gnum("g05_zcrit_calibration:surrogate/draws_ge_floor", 0)} of its '
+  f'{gnum("g05_zcrit_calibration:surrogate/n", 0)} draws clear the floor and '
+  f'{gnum("g05_zcrit_calibration:surrogate/draws_ge_zcrit", 0)} clear `z_crit`, which is the honest reason its tail '
+  f'fit sits high &mdash; randomising phase does not remove the RFI structure that inflates the tail.')
+Q('')
+Q('### 4 The drift arm: why one pooled fit is not allowed')
+Q('')
+Q(f'Pooling the drift arm\'s null draws gives {gnum("g05_zcrit_calibration:drift_diagnostic/pool/n_draws", 0)} values '
+  f'with median {gnum("g05_zcrit_calibration:drift_diagnostic/median", 4)} and maximum '
+  f'{gnum("g05_zcrit_calibration:drift_diagnostic/max", 4)}; its tail '
+  f'({gnum("g05_zcrit_calibration:drift_diagnostic/fit/z_tail_min", 4)}&ndash;'
+  f'{gnum("g05_zcrit_calibration:drift_diagnostic/fit/z_tail_max", 4)}) is far heavier than the DM arm\'s. A fit on '
+  f'that pooled tail would have set z_crit = '
+  f'{gnum("g05_zcrit_calibration:drift_diagnostic/zcrit_if_pooled_fit_were_used", 4)} against the adopted '
+  f'{gnum("g05_zcrit_calibration:zcrit", 3)} &mdash; a bar no astrophysical signal could clear. The arm is therefore calibrated on its own draws '
+  f'(`zcrit_off_fit` = {gnum("g05_zcrit_calibration:zcrit_off_fit", 4)}), and the drift arm\'s headline is a veto '
+  f'count, not a z threshold.')
+Q('')
+Q('### 5 The veto: matched blank-sky windows')
+Q('')
+Q(f'A lock survives only if the same trial in the blank-sky window does not show it. On the base arm that is '
+  f'{gnum("g05_veto_base:n_on_locks", 0)} ON locks against {gnum("g05_veto_base:n_off_locks", 0)} OFF locks: '
+  f'{gnum("g05_veto_base:n_vetoed", 0)} vetoed, '
+  f'{gnum("g05_veto_base:n_standing", 0)} standing. The locks are not marginal &mdash; their ON z runs '
+  f'{gnum("g05_veto_base:on_locks.z_on.min", 2)}&ndash;{gnum("g05_veto_base:on_locks.z_on.max", 2)} '
+  f'({gnum("g05_veto_base:on_locks.z_on.len", 0)} of them) &mdash; they are terrestrial: every one of them sits at a '
+  f'trial whose blank-sky z is exactly {gnum("g05_veto_base:on_locks.off_z_at_trial.max", 4)} (max = min over the '
+  f'set, all of them in blank-sky window {gnum("g05_veto_base:on_locks.off_window_at_trial.max", 0)}), the OFF '
+  f'window carries the same tone up to '
+  f'{gnum("g05_veto_base:off_locks.z.max", 4)}, and the {gnum("g05_veto_base:n_on_locks", 0)} lock frequencies span '
+  f'only {fmt(LOCK_SPAN_HZ, 2)} Hz '
+  f'({gnum("g05_veto_base:on_locks.freq_hz.min", 4)}&ndash;{gnum("g05_veto_base:on_locks.freq_hz.max", 4)} Hz, out to '
+  f'bin {gnum("g05_veto_base:on_locks.bin.max", 0)}, where blank sky itself reads '
+  f'{gnum("g05_veto_base:on_locks.off_z_at_bin.min", 2)}&ndash;{gnum("g05_veto_base:on_locks.off_z_at_bin.max", 2)}, trial index '
+  f'{gnum("g05_veto_base:on_locks.trial_index.max", 0)}).')
+Q('')
+Q(ggrid(VETO_NS, ['z_crit', 'n_on_locks', 'n_off_locks', 'n_vetoed', 'n_standing'], 3, 'veto arm', cut='g05_veto_'))
+Q('')
+Q(f'The control arm is the interesting one: {gnum("g05_veto_ctrl:n_on_locks", 0)} ON locks against only '
+  f'{gnum("g05_veto_ctrl:n_off_locks", 0)} OFF locks, so {gnum("g05_veto_ctrl:n_vetoed", 0)} match and '
+  f'{gnum("g05_veto_ctrl:n_standing", 0)} cannot be matched at all. Those '
+  f'{gnum("g05_veto_ctrl:n_standing", 0)} are an unmatched-window artefact of the veto\'s own definition, not '
+  f'{gnum("g05_veto_ctrl:n_standing", 0)} detections &mdash; the veto is a matched test, and the receipt prints both '
+  f'sides so the reader can see the asymmetry instead of being handed a verdict.')
+Q('')
+Q('### 6 The positive control that survives the veto')
+Q('')
+Q(f'A veto that killed everything would be worthless, so the campaign plants a beacon: drift '
+  f'{gnum("g05_beacon_probe:injection/drift_hz", 2)} Hz/s at '
+  f'{gnum("g05_beacon_probe:injection/at_s", 3)} s, width {gnum("g05_beacon_probe:injection/width_s", 1)} s, tone '
+  f'{gnum("g05_beacon_probe:injection/tone_hz", 1)} Hz, SNR {gnum("g05_beacon_probe:injection/snr", 2)}, over '
+  f'{gnum("g05_beacon_probe:drift_chunks", 0)} drift chunks of '
+  f'{gnum("g05_beacon_probe:window_blocks_drift", 0)} blocks on {gnum("g05_beacon_probe:workers", 0)} workers in '
+  f'{gnum("g05_beacon_probe:wall_s", 2)} s. The recovery: ON-minus-OFF z delta at least '
+  f'{gnum("g05_beacon_probe:summary/min_z_delta_on", 4)} across the beacon footprint, '
+  f'{gnum("g05_beacon_probe:summary/neighbour_z_delta_at_cell", 4)} at the adjacent drift trial, and only '
+  f'{gnum("g05_beacon_probe:summary/max_off_z_at_beacon_cell", 4)} for the same cell in blank sky, with the recovered '
+  f'bin at most {gnum("g05_beacon_probe:summary/max_bin_offset", 0)} bin from the injected one. The injection is '
+  f'the pre-registered drift control {"exactly" if BEACON_IS_PREREG else "approximately"}: '
+  f'{gnum("g05_prereg:positive_control/drift/drift_hz", 2)} Hz/s at '
+  f'{gnum("g05_prereg:positive_control/drift/at_s", 3)} s, SNR '
+  f'{gnum("g05_prereg:positive_control/drift/snr", 2)}. The DM control the same campaign pre-registered is a '
+  f'{gnum("g05_prereg:positive_control/dm/snr", 1)}-SNR tone at DM '
+  f'{gnum("g05_prereg:positive_control/dm/dm", 1)}, {gnum("g05_prereg:positive_control/dm/tone_hz", 1)} Hz, '
+  f'{gnum("g05_prereg:positive_control/dm/width_s", 3)} s wide at '
+  f'{gnum("g05_prereg:positive_control/dm/at_s", 1)} s.')
+Q('')
+Q('### 7 The engine under a 4 GiB ceiling')
+Q('')
+Q(f'The parity run is {gnum("g05_parity_full:n", 0)} blocks &times; {gnum("g05_parity_full:dm", 0)} DM trials on '
+  f'{gnum("g05_parity_full:workers", 0)} workers with {gnum("g05_parity_full:fdot", 0)} fdot trials. Peak RSS '
+  f'{gnum("g05_parity_full:peak_rss_mib", 1)} MiB against the {gnum("g05_parity_full:bar_peak_rss_mib", 0)} MiB bar '
+  f'(idle baseline {gnum("g05_parity_full:rss_mib_now", 1)} MiB). The batched 2-D pass does the reference work in '
+  f'{gnum("g05_parity_full:batch2d/wall_batch_s", 2)} s against '
+  f'{gnum("g05_parity_full:batch2d/wall_ref_s", 2)} s &mdash; {gnum("g05_parity_full:batch2d/speedup", 3)}&times; at '
+  f'normalised difference {gsci("g05_parity_full:batch2d/norm_diff")}, inside the '
+  f'{gsci("g05_parity_full:bar_norm_diff")} bar. The same workload takes '
+  f'{gnum("g05_parity_full:workload/workers_1", 3)} s on one worker and '
+  f'{gnum("g05_parity_full:workload/workers_12", 3)} s on {gnum("g05_parity_full:workers", 0)} &mdash; '
+  f'{gnum("g05_parity_full:workload/speedup", 3)}&times;, over a pool of '
+  f'{gnum("g05_parity_full:workload/pool", 0)} with {gnum("g05_parity_full:workload/channels", 0)} channels and '
+  f'{gnum("g05_parity_full:workload/reps", 0)} reps.')
+Q('')
+Q(f'Parity is reported twice, because the two numbers answer different questions: the normalised differences against '
+  f'the naive DFT are {graw("g05_parity_full:naive_dft/dm_norm")} (DM arm) and '
+  f'{graw("g05_parity_full:naive_dft/drift_norm")} (drift arm) over '
+  f'{gnum("g05_parity_full:naive_dft/n", 0)} comparisons, while the raw worst-case maxima are '
+  f'{graw("g05_parity_full:worst/parity_f32")} in {graw("g05_parity_full:worst/dtype_f32")} and '
+  f'{graw("g05_parity_full:worst/parity_f64")} in float64 &mdash; a raw maximum is only meaningful against the '
+  f'normalised bar, and the receipt keeps both rather than the flattering one.')
+Q('')
+Q(glist(['g05_engine_1blk:peak_rss_mib', 'g05_engine_1blk:wall_s', 'g05_engine_1blk:workers',
+         'g05_engine_1blk:family_max/dm_full', 'g05_engine_1blk:family_max/drift_full',
+         'g05_bitorder_probe:fftlen', 'g05_bitorder_probe:nchan', 'g05_bitorder_probe:npol',
+         'g05_bitorder_probe:nt', 'g05_bitorder_probe:pfb_over',
+         'g05_statistic_probes:elapsed_s', 'g05_statistic_probes:workers'], 4))
+Q('')
+Q('### 8 The bytes and the slice contract')
+Q('')
+Q(f'{gnum("g05_checkpoint_phase01:verdict/slices_staged", 0)} slices staged, '
+  f'{gnum("derived.slice_bytes_all", 0)} bytes = {gnum("derived.slice_bytes_all_gib", 3)} GiB, split '
+  f'{gnum("derived.slice_bytes_on", 0)} (role ON) and {gnum("derived.slice_bytes_off", 0)} (role OFF); per slice '
+  f'{gnum("derived.slice_bytes_min_gib", 3)}&ndash;{gnum("derived.slice_bytes_max_gib", 3)} GiB. The contract is '
+  f'{gnum("g05_checkpoint_phase01:contract_byte_budget_per_pointing", 0)} bytes and '
+  f'{gnum("g05_checkpoint_phase01:contract_block_count_per_pointing", 0)} blocks per pointing, and the checkpoint '
+  f'counts {gnum("g05_checkpoint_phase01:verdict/documented_anomalies", 0)} documented anomalies &mdash; counted, not '
+  f'hidden. The grid the bytes are searched with: drift window '
+  f'{gnum("derived.drift_tau_s", 4)} s, natural fdot resolution '
+  f'{gnum("derived.natural_res_hz_s")} Hz/s, a span of {gnum("derived.fdot_span_cells", 4)} cells stepped by '
+  f'{gnum("derived.fdot_step_cells", 4)}. The target is named in the receipt\'s own source annotation: '
+  f'`{gsrc("derived.target_v_mag")}`.')
+Q('')
+Q(ggrid(SLICE_NS, ['bytes', 'blocks_walked', 'header/NBITS', 'header/OBSFREQ', 'header/OBSBW',
+                   'header/RA', 'header/DEC', 't_slice_s', 'seam_pad_bytes', 'audit_seconds'], 4, 'slice audit', cut='g05_slice_audit_'))
+Q('')
+Q('### 9 The sweeps')
+Q('')
+Q(f'{len(SWEEP_NS)} sweep legs, each its own receipt, each carrying its own peak RSS and its own family maximum. '
+  f'The `ru_maxrss_mib_unreliable` column is the receipt\'s own warning that the kernel\'s high-water mark is not '
+  f'comparable across legs; `peak_rss_mib` is the measured one.')
+Q('')
+Q(ggrid(SWEEP_NS, ['family_max', 'peak_rss_mib', 'ru_maxrss_mib_unreliable', 'trials', 'windows',
+                   'window_blocks', 'surrogate', 'wall_s'], 4, 'sweep leg', cut='g05_sweep_'))
+Q('')
+Q('### 10 The gate and its mutants')
+Q('')
+Q(f'{gnum("g05_gate_receipt:summary/checks_passed", 0)} checks passed, '
+  f'{gnum("g05_gate_receipt:summary/checks_failed", 0)} failed; '
+  f'{gnum("g05_gate_receipt:summary/mutants_fired", 0)} of '
+  f'{gnum("g05_gate_receipt:summary/mutants_expected", 0)} expected mutants fired, inside '
+  f'{gnum("g05_gate_receipt:summary/mutant_checks_total", 0)} mutant-arm checks. A mutant arm must exit '
+  f'non-zero &mdash; a gate that cannot be broken is not a gate.')
+Q('')
+Q(table(['arm', '`checks`', '`failures`', '`exit_code_expected`', '`log_bytes`'],
+        [(f'`{a}`', gnum(f'g05_gate_receipt:arms/{a}/checks', 0), gnum(f'g05_gate_receipt:arms/{a}/failures', 0),
+          gnum(f'g05_gate_receipt:arms/{a}/exit_code_expected', 0),
+          gnum(f'g05_gate_receipt:arms/{a}/log_bytes', 0)) for a in ARMS]))
+Q('')
+Q('### 11 The censuses')
+Q('')
+Q(f'Two censuses say the same thing from different directions. The impulse census over '
+  f'{gnum("g05_impulse_census:blocks_per_pointing", 0)} blocks per pointing '
+  f'({gnum("g05_impulse_census:seconds", 2)} s each) reaches z&nbsp;=&nbsp;{gnum("g05_impulse_census:z_max_on", 4)} '
+  f'ON and {gnum("g05_impulse_census:z_max_off", 4)} OFF, with '
+  f'{gnum("g05_impulse_census:n_gt20_on", 0)} ON and {gnum("g05_impulse_census:n_gt20_off", 0)} OFF blocks above '
+  f'z&nbsp;=&nbsp;20 &mdash; the sky is not quiet, in either window. The spectral census finds '
+  f'{gnum("g05_spectral_census:on_hot_bins", 0)} hot ON bins and '
+  f'{gnum("g05_spectral_census:off_hot_bins", 0)} hot OFF bins above z&nbsp;=&nbsp;'
+  f'{gnum("g05_spectral_census:hot_z", 1)}, of which {gnum("g05_spectral_census:shared_hot_bins", 0)} are shared '
+  f'({gnum("g05_spectral_census:shared_frac_of_on", 4)} of the ON set): interference, present in both windows, which '
+  f'is precisely what the matched veto is built to remove.')
+Q('')
+Q('### 12 Honest boundaries')
+Q('')
+Q(f'- The seam is an index, not the engine output: {fmt(G5["n_rows"], 0)} rows sliced from '
+  f'{len(G5["index"]["sources"])} receipts. The receipts are the source of truth; the seam is what a reviewer reads '
+  f'first.')
+Q(f'- The drift arm\'s raw statistic is RFI-dominated '
+  f'(`family_max` {gnum("g05_engine_1blk:family_max/drift_full", 4)} on a single block, '
+  f'{gnum("g05_veto_base:off_locks.z.max", 4)} in the blank-sky window). The claim is '
+  f'{gnum("g05_veto_base:n_standing", 0)} standing after the matched veto, never "the drift statistic is clean".')
+Q(f'- The A7 surrogate result is a FAIL and is published as one '
+  f'({gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)} against the '
+  f'{gnum("g05_zcrit_calibration:surrogate/zcrit_bar_1p10", 4)} bar). Nothing was re-tuned to make it pass.')
+Q(f'- `wall_s`, `elapsed_s` and `audit_seconds` are telemetry from one machine, not claims; '
+  f'`ru_maxrss_mib_unreliable` is flagged unreliable by the receipt itself.')
+Q(f'- The {gnum("g05_veto_ctrl:n_standing", 0)} standing locks on the control arm are unmatched trials '
+  f'({gnum("g05_veto_ctrl:n_on_locks", 0)} ON against {gnum("g05_veto_ctrl:n_off_locks", 0)} OFF), not candidates.')
+Q(f'- The {gnum("g05_checkpoint_phase01:verdict/documented_anomalies", 0)} documented anomalies are counted here and '
+  f'enumerated in the checkpoint receipt, not on this page.')
+Q(f'- The contract is `{G5["contract"]}`. This page is a rendering of the seam; where the two '
+  f'disagree, the gate wins.')
+Q('')
+Q('## Related')
+Q('')
+Q('- [CFS Gate 4](cfs-gate4.md) &mdash; the multi-rotation fold and its receipted null.')
+Q('- [ChemGym-v2](chemgym-v2.md) &mdash; the same laws applied to chemistry benches.')
+Q('- [The Laws of Governed Compaction](omp-governance.md) &mdash; the rules this page is built under.')
+Q('- [Projects](projects.md) &mdash; what is running, what is closed.')
+Q('')
+Q('_Apache License 2.0 &middot; built by `src/tools/make_docs_pages.py` from '
+  '`harness/vendor/guppi_gate5/run/receipts.json`._')
+Q('')
+G5_MD = '\n'.join(K) + '\n'
+for _p in (gnum('g05_zcrit_calibration:zcrit', 3), gnum('g05_veto_base:n_standing', 0),
+           gnum('g05_zcrit_calibration:surrogate/zcrit_surrogate_fit', 4),
+           gnum('g05_gate_receipt:summary/checks_passed', 0), fmt(G5['n_rows'], 0),
+           gnum('g05_parity_full:peak_rss_mib', 1), gnum('g05_beacon_probe:summary/min_z_delta_on', 4)):
+    assert _p in G5_MD, f'cfs-g5.md missing headline {_p!r}'
+(DOCS / 'cfs-g5.md').write_text(G5_MD)
+print('wrote cfs-g5.md', len(G5_MD))
+
+# index card, projects entry and the llms.txt line carry seam numerals too
+G5_CARD = f'''<section>
+  <h2>Gate 5: The Promotion Seam, Where Every Numeral Carries Its Receipt</h2>
+  <div class="grid-2">
+    <div class="card">
+      <h3><a href="cfs-g5.html" style="color: var(--accent)">Gate 5: 2-Bit GUPPI, {gnum("g05_veto_base:n_on_locks", 0)} RFI Locks, {gnum("g05_veto_base:n_standing", 0)} Standing</a></h3>
+      <p>A promotion decision on {gnum("g05_checkpoint_phase01:verdict/slices_staged", 0)} real slices
+({gnum("derived.slice_bytes_all_gib", 2)} GiB): a threshold of <code>{gnum("g05_zcrit_calibration:zcrit", 3)}</code>
+fitted on the null's own {gnum("g05_zcrit_calibration:pool/n_draws", 0)} draws,
+{gnum("g05_veto_base:n_vetoed", 0)} of {gnum("g05_veto_base:n_on_locks", 0)} locks vetoed against matched blank-sky
+windows, and a planted beacon that still survives at
+<code>{gnum("g05_beacon_probe:summary/min_z_delta_on", 4)}</code>. One published control failed
+(<code>{gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)}</code> against the
+<code>{gnum("g05_zcrit_calibration:surrogate/zcrit_bar_1p10", 4)}</code> bar) and the failure is kept.</p>
+    </div>
+    <div class="card pos">
+      <h3><a href="cfs-g5.html" style="color: var(--accent)">How This Card Stays True</a></h3>
+      <p>Every number on this card is read from <code>guppi_gate5/run/receipts.json</code> by the same page
+generator that writes the HTML, from a snapshot pinned in <code>harness/vendor/SHA256SUMS</code>. The seam holds
+<code>{fmt(G5["n_rows"], 0)}</code> rows, one per numeral, each naming the receipt it was sliced from, and the
+docs gate regenerates the page and fails on any drift.</p>
+    </div>
+  </div>
+</section>'''
+splice(DOCS / 'index.html', 'gate5-card', G5_CARD)
+
+G5_ENTRY = f'''## 6. CFS Gate 5 &mdash; The Promotion Seam (`guppi_gate5`)
+
+* **What it is:** whether a 2-bit GUPPI backend may be promoted to a real coherent-fold search, decided on
+{gnum("g05_checkpoint_phase01:verdict/slices_staged", 0)} staged slices ({gnum("derived.slice_bytes_all_gib", 2)} GiB,
+{N_SLICE_2BIT} at 2 bit and {N_SLICE_8BIT} at 8 bit) under a pre-registered contract.
+* **The verdict:** `z_crit = {gnum("g05_zcrit_calibration:zcrit", 3)}` fitted on the null's own
+{gnum("g05_zcrit_calibration:pool/n_draws", 0)} draws; {gnum("g05_veto_base:n_vetoed", 0)} of
+{gnum("g05_veto_base:n_on_locks", 0)} locks vetoed against matched blank-sky windows,
+{gnum("g05_veto_base:n_standing", 0)} standing, while a planted drift beacon is still recovered at
+`{gnum("g05_beacon_probe:summary/min_z_delta_on", 4)}`.
+* **Governance under load:** `{gnum("g05_gate_receipt:summary/checks_passed", 0)}`/`{gnum("g05_gate_receipt:summary/checks_failed", 0)}`
+gate checks with `{gnum("g05_gate_receipt:summary/mutants_fired", 0)}` of
+`{gnum("g05_gate_receipt:summary/mutants_expected", 0)}` mutants fired inside
+`{gnum("g05_gate_receipt:summary/mutant_checks_total", 0)}` mutant-arm checks; the published A7 surrogate bar
+`{gnum("g05_zcrit_calibration:surrogate/zcrit_bar_1p10", 4)}` is failed by
+`{gnum("g05_zcrit_calibration:surrogate/zcrit_surrogate_fit", 4)}` and the FAIL is published, not re-tuned.
+* **Receipt seam:** `{fmt(G5["n_rows"], 0)}` rows, one per numeral, each carrying the receipt path it was sliced
+from; the vendored snapshot is pinned by `harness/vendor/SHA256SUMS` and the docs gate regenerates the page from it.'''
+splice(DOCS / 'projects.md', 'gate5-entry', G5_ENTRY)
+
+splice_line(DOCS / 'llms.txt', '- [CFS Gate 5',
+            f'- [CFS Gate 5: The Promotion Seam](https://spoon-t8i.github.io/omp-governance-scaffold/cfs-g5.html): '
+            f'2-bit GUPPI promotion on {gnum("g05_checkpoint_phase01:verdict/slices_staged", 0)} slices '
+            f'({gnum("derived.slice_bytes_all_gib", 2)} GiB), z_crit={gnum("g05_zcrit_calibration:zcrit", 3)} fitted '
+            f'on the null tail, {gnum("g05_veto_base:n_vetoed", 0)}/{gnum("g05_veto_base:n_on_locks", 0)} RFI locks '
+            f'vetoed with {gnum("g05_veto_base:n_standing", 0)} standing, beacon recovered at '
+            f'{gnum("g05_beacon_probe:summary/min_z_delta_on", 4)}, {fmt(G5["n_rows"], 0)}-row receipt seam.')
+
+_ix5 = (DOCS / 'index.html').read_text()
+assert 'cfs-g5.html' in _ix5, 'index.html lost the gate5 card'
+assert gnum('g05_veto_base:n_standing', 0) in _ix5, 'gate5 card lost the standing verdict'
+_pm5 = (DOCS / 'projects.md').read_text()
+assert 'CFS Gate 5' in _pm5 and gnum('g05_zcrit_calibration:zcrit', 3) in _pm5, 'projects.md lost the gate5 entry'
+print('gate5 page guard: ok')
