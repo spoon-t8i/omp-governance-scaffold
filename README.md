@@ -4,6 +4,27 @@
 [![Docs: Live Site](https://img.shields.io/badge/Docs-GitHub_Pages-3fb950.svg)](https://spoon-t8i.github.io/omp-governance-scaffold/)
 [![Agent Ingestion: llms.txt](https://img.shields.io/badge/AI_Ingestion-llms.txt-58a6ff.svg)](https://spoon-t8i.github.io/omp-governance-scaffold/llms.txt)
 
+**Stop local LLM agents from hallucinating progress and writing self-certifying tests after context compaction.**
+
+Honesty that lives in a system prompt cannot survive the reset that creates the temptation: a freshly compacted local model re-asserts a green build it never ran, writes a test that passes because it asserts nothing, and cites numerals its own receipts contradict. This scaffold moves verification out of the prompt and into exit codes — every claim binds to a receipt on disk, and every gate ships sabotage mutants that must exit `1`, so a silent no-op gate can never certify itself.
+
+### Proof strip — every number below is a receipt in this repo
+
+- **Tiny Position-Zero Spine.** The injected constitution is a Merkle-folded, append-only state ledger (`src/gates/merkle_compactor.py`, `src/spine/`): `1,704` frozen tokens measured against the `IDEAL_TOKENS = 1800` budget in `src/gates/spine_check.py`, so a `65,536`-token local KV cache keeps its `98.7%` prefix-cache hit rate instead of re-reading a prompt that grows every turn.
+- **Non-vacuous mutant gates.** Every verification gate ships sabotage mutants that must exit `rc=1` — a silent no-op flag, a numeral the receipt does not carry, a prose leak. Measured on this commit: `harness/seam_gate.sh --gate` **18/0**, `harness/docs_gate.sh --gate` **23/0**, `src/gates/surprise_check.py --self-test` **29/29 mutants** (16 must wake, 13 must stay dormant), `src/tools/session_telemetry.py --self-test` **26/26**.
+- **Battle-tested on real science.** Verified end-to-end on published Breakthrough Listen GUPPI radio-astronomy volumes: `CFS-G4` (`34.1 GB`, pre-registered `z_crit = 6.0`, `0` false-positive locks) and `CFS-G5` (`12.07 GiB` across 7 slices, blind ON-vs-blank-sky cadence: `63/63` terrestrial RFI locks vetoed, `0` standing false positives, fitted `z_crit = 7.392`, `2,427` deterministic receipt rows — one per numeral, each carrying the receipt path it was sliced from). Live showcase: [spoon-t8i.github.io/omp-governance-scaffold](https://spoon-t8i.github.io/omp-governance-scaffold/) · [`cfs-g5.html`](https://spoon-t8i.github.io/omp-governance-scaffold/cfs-g5.html).
+
+### 10-second local quickstart (no GPU, no API keys)
+
+```bash
+git clone https://github.com/spoon-t8i/omp-governance-scaffold.git && cd omp-governance-scaffold
+bash harness/seam_gate.sh --gate                    # promotion seam + CLI contract; mutants must bite
+bash harness/docs_gate.sh --gate                    # generated docs can never rot; mutants must bite
+python3 src/gates/surprise_check.py --self-test     # 29 two-sided loop/wake mutants
+```
+
+---
+
 **Deterministic control-plane governance for long-horizon local AI coding agents.**  
 Instead of bloating system prompts with fragile prose rules that erode during context compaction, this scaffold separates **probabilistic token generation** (quantized local MoE models) from **deterministic verification** (standalone Python/Bash `RC=0` gates, `before_compact` lifecycle hooks, and disk-anchored state).
 
@@ -41,7 +62,7 @@ Measured across multi-hour autonomous engineering runs (3D WebGL2 engines, bit-e
 
 ---
 
-## 10-Second Standalone Quickstart
+## Inspect the Sieve and Spine Gates Directly
 
 You do not need a multi-GPU workstation to inspect or run the deterministic governance gates and compaction sieve locally (`Python 3.10+`, zero external pip dependencies):
 
