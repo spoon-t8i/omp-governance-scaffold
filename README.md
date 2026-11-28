@@ -4,15 +4,33 @@
 [![Docs: Live Site](https://img.shields.io/badge/Docs-GitHub_Pages-3fb950.svg)](https://spoon-t8i.github.io/omp-governance-scaffold/)
 [![Agent Ingestion: llms.txt](https://img.shields.io/badge/AI_Ingestion-llms.txt-58a6ff.svg)](https://spoon-t8i.github.io/omp-governance-scaffold/llms.txt)
 
-**Stop local LLM agents from hallucinating progress and writing self-certifying tests after context compaction.**
+**Built and tested for oh-my-pi (OMP).** Verification lives in standalone Python/Bash scripts that return
+exit codes, so the checks run on their own — no model, no GPU, no API keys.
 
-Honesty that lives in a system prompt cannot survive the reset that creates the temptation: a freshly compacted local model re-asserts a green build it never ran, writes a test that passes because it asserts nothing, and cites numerals its own receipts contradict. This scaffold moves verification out of the prompt and into exit codes — every claim binds to a receipt on disk, and every gate ships sabotage mutants that must exit `1`, so a silent no-op gate can never certify itself.
+## What this is, in plain English
 
-### Proof strip — every number below is a receipt in this repo
+A local AI coding agent keeps everything it knows in one fixed-size window. Work with it for a few hours and
+that window fills up, so the software squeezes it: older messages get summarized and the originals are thrown
+away. Right after that squeeze the agent has usually lost the thread. It will say a build passed when it never
+ran the build, write a test that passes because the test checks nothing, and quote numbers that its own saved
+records contradict. Telling the model to "be honest" in a prompt does not fix this — the reset is exactly what
+erases the reminder.
 
-- **Tiny Position-Zero Spine.** The injected constitution is a Merkle-folded, append-only state ledger (`src/gates/merkle_compactor.py`, `src/spine/`): `1,704` frozen tokens measured against the `IDEAL_TOKENS = 1800` budget in `src/gates/spine_check.py`, so a `65,536`-token local KV cache keeps its `98.7%` prefix-cache hit rate instead of re-reading a prompt that grows every turn.
-- **Non-vacuous mutant gates.** Every verification gate ships sabotage mutants that must exit `rc=1` — a silent no-op flag, a numeral the receipt does not carry, a prose leak. Measured on this commit: `harness/seam_gate.sh --gate` **18/0**, `harness/docs_gate.sh --gate` **23/0**, `src/gates/surprise_check.py --self-test` **29/29 mutants** (16 must wake, 13 must stay dormant), `src/tools/session_telemetry.py --self-test` **26/26**.
-- **Battle-tested on real science.** Verified end-to-end on published Breakthrough Listen GUPPI radio-astronomy volumes: `CFS-G4` (`34.1 GB`, pre-registered `z_crit = 6.0`, `0` false-positive locks) and `CFS-G5` (`12.07 GiB` across 7 slices, blind ON-vs-blank-sky cadence: `63/63` terrestrial RFI locks vetoed, `0` standing false positives, fitted `z_crit = 7.392`, `2,427` deterministic receipt rows — one per numeral, each carrying the receipt path it was sliced from). Live showcase: [spoon-t8i.github.io/omp-governance-scaffold](https://spoon-t8i.github.io/omp-governance-scaffold/) · [`cfs-g5.html`](https://spoon-t8i.github.io/omp-governance-scaffold/cfs-g5.html).
+This scaffold moves the checking out of the conversation and into scripts that answer yes or no with an exit
+code. Three pieces do the work:
+
+1. **It keeps a tiny, locked summary of the project.** A short frozen page holding the key rules and the
+   current state is re-injected every turn, so the important facts survive the squeeze instead of being
+   paraphrased away.
+2. **It sabotages itself on purpose.** Every check ships with deliberately broken versions of its own input
+   ("mutants") that it is required to catch. If a check waves a broken case through, the check itself fails —
+   so a safety check cannot rubber-stamp work, and a silent no-op can never certify itself.
+3. **It proves every number.** Any figure quoted in the docs has to match a machine receipt saved in the repo;
+   if the receipt and the page disagree, the docs gate refuses the change.
+
+Real-world proof: tested on `12.07 GiB` of real Breakthrough Listen radio-astronomy data, where the same gates
+caught and filtered out all `63` terrestrial radio-interference signals with zero false alarms — live results
+on the [CFS-G5 page](https://spoon-t8i.github.io/omp-governance-scaffold/cfs-g5.html).
 
 ### 10-second local quickstart (no GPU, no API keys)
 
@@ -25,11 +43,19 @@ python3 src/gates/surprise_check.py --self-test     # 29 two-sided loop/wake mut
 
 ---
 
-**Deterministic control-plane governance for long-horizon local AI coding agents.**  
+## Technical Architecture & Receipts
+
+**Deterministic control-plane governance for long-horizon local AI coding agents.**
 Instead of bloating system prompts with fragile prose rules that erode during context compaction, this scaffold separates **probabilistic token generation** (quantized local MoE models) from **deterministic verification** (standalone Python/Bash `RC=0` gates, `before_compact` lifecycle hooks, and disk-anchored state).
 
-> **Interactive Documentation & Two-Tier Guides:** [**spoon-t8i.github.io/omp-governance-scaffold**](https://spoon-t8i.github.io/omp-governance-scaffold/)  
+> **Interactive Documentation & Two-Tier Guides:** [**spoon-t8i.github.io/omp-governance-scaffold**](https://spoon-t8i.github.io/omp-governance-scaffold/)
 > **Single-Shot LLM Ingestion Bundle:** [`llms.txt`](https://spoon-t8i.github.io/omp-governance-scaffold/llms.txt) · [`llms-full.txt`](https://spoon-t8i.github.io/omp-governance-scaffold/llms-full.txt)
+
+### Proof strip — every number below is a receipt in this repo
+
+- **Tiny Position-Zero Spine.** The injected constitution is a Merkle-folded, append-only state ledger (`src/gates/merkle_compactor.py`, `src/spine/`): `1,704` frozen tokens measured against the `IDEAL_TOKENS = 1800` budget in `src/gates/spine_check.py`, so a `65,536`-token local KV cache keeps its `98.7%` prefix-cache hit rate instead of re-reading a prompt that grows every turn.
+- **Non-vacuous mutant gates.** Every verification gate ships sabotage mutants that must exit `rc=1` — a silent no-op flag, a numeral the receipt does not carry, a prose leak. Measured on this commit: `harness/seam_gate.sh --gate` **18/0**, `harness/docs_gate.sh --gate` **23/0**, `src/gates/surprise_check.py --self-test` **29/29 mutants** (16 must wake, 13 must stay dormant), `src/tools/session_telemetry.py --self-test` **26/26**.
+- **Battle-tested on real science.** Verified end-to-end on published Breakthrough Listen GUPPI radio-astronomy volumes: `CFS-G4` (`34.1 GB`, pre-registered `z_crit = 6.0`, `0` false-positive locks) and `CFS-G5` (`12.07 GiB` across 7 slices, blind ON-vs-blank-sky cadence: `63/63` terrestrial RFI locks vetoed, `0` standing false positives, fitted `z_crit = 7.392`, `2,427` deterministic receipt rows — one per numeral, each carrying the receipt path it was sliced from). Live showcase: [spoon-t8i.github.io/omp-governance-scaffold](https://spoon-t8i.github.io/omp-governance-scaffold/) · [`cfs-g5.html`](https://spoon-t8i.github.io/omp-governance-scaffold/cfs-g5.html).
 
 ---
 
@@ -37,7 +63,7 @@ Instead of bloating system prompts with fragile prose rules that erode during co
 
 ```mermaid
 flowchart LR
-    P0["Position Zero Spine<br/>AGENTS.md + CORE.md + STATE.md<br/>(Frozen 1,704 Tokens)"] --> OMP["Oh-My-Pi (OMP) Runtime<br/>Minimal 3-Tool Schema<br/>(read · bash · write)"]
+    P0["Position Zero Spine<br/>AGENTS.md + CORE.md + STATE.md<br/>(Frozen 1,704 Tokens)"] --> OMP["oh-my-pi (OMP) Runtime<br/>Minimal 3-Tool Schema<br/>(read · bash · write)"]
     OMP -->|"Context Ceiling<br/>(55K → 34K)"| SIEVE["S1–S4 Pre-Compaction Sieve<br/>pre_compact_sieve.py<br/>(0 B idle · ≤137 tok active)"]
     SIEVE --> OMP
     OMP -->|"Proposed Mutation"| GATES["Deterministic Gates (RC=0)<br/>spine_check · entail_check<br/>plan_check · surprise_check"]
@@ -57,7 +83,7 @@ Measured across multi-hour autonomous engineering runs (3D WebGL2 engines, bit-e
 | **Prefix-Cache Hit Rate** | **`98.7%` median** | Immutable Position-Zero prefix + append-only turn discipline |
 | **Local Decode Throughput** | **`54 – 74.7 tok/s`** | `180B` total / `6B` active MoE (`NVFP4`) on Blackwell `sm_120` with `11/12` MTP draft acceptance |
 | **Working Context Runway** | **`~43,000` tokens** | Inside a `65,536`-token ceiling with deterministic `55K -> 34K` compaction |
-| **Compaction Sieve Cost** | **`0 B` idle / `<= 137` tok active** | `S1–S4` AST/regex extraction on OMP `before_compact` hook |
+| **Compaction Sieve Cost** | **`0 B` idle / `<= 137` tok active** | `S1–S4` AST/regex extraction on the OMP `before_compact` hook |
 | **Deterministic Gate Suite** | **`584 / 584` passing checks** | Standalone Python/Bash exit-code verifiers (`spine_check.py`, `fact_store.py` `290/290`) |
 
 ---
@@ -81,7 +107,7 @@ Every guide on the [GitHub Pages site](https://spoon-t8i.github.io/omp-governanc
 | Path | Description |
 | :--- | :--- |
 | [`src/spine/`](src/spine/) | Frozen Position-Zero constitution (`AGENTS.md`, `CORE.md`, `STATE.template.md`, `surprise_policy.json`). |
-| [`src/hooks/`](src/hooks/) | `S1–S4` Pre-Compaction Sieve (`pre_compact_sieve.py`) hooked into OMP's `before_compact` lifecycle event. |
+| [`src/hooks/`](src/hooks/) | `S1–S4` Pre-Compaction Sieve (`pre_compact_sieve.py`) hooked into the OMP `before_compact` lifecycle event. |
 | [`src/gates/`](src/gates/) | 10 standalone `RC=0` verification gates (`spine_check.py`, `entail_check.py`, `plan_check.py`, `fact_store.py`, `regime_sensor.py`, `surprise_check.py`, `merkle_compactor.py`, `gate_exec.py`, `gate_freeze.py`, `checkpoint.sh`). |
 | [`src/tools/`](src/tools/) | Line-bounded surgical editor (`edit_file.py`), static impact analyzer, token probe, and session telemetry utilities. |
 | [`docs/`](docs/) | Jekyll GitHub Pages source (`architecture`, `compaction-sieve`, `attractors`, `omp-governance`, `cfs-gate4`, `cfs-g5`, `chemgym-v2`, `workstation`, `projects`, `theory`, `influences`, `llms.txt`, `llms-full.txt` &mdash; the campaign pages are generated from receipts by `src/tools/make_docs_pages.py`, the bundle by `src/tools/bundle_docs.py`). |
