@@ -293,6 +293,31 @@ _NOTHING = {"cd", "echo", "printf", "export", "set", "unset", "source", "true", 
             "diff", "find", "du", "df", "stat", "pwd", "which", "sleep", "kill", "ps", "git"}
 
 
+_HEREDOC_R = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
+
+
+def strip_heredoc(cmd):
+    """Every here-document body removed, the opening line kept.
+
+    A heredoc body is data the command carries, not commands the shell runs. Left in, the segment
+    splitter reads each body line as its own command, so `cat > page.py <<PY` whose body contains a
+    comment naming `spine_check.py --check-seam` classifies as a green gate - and a false gate
+    resets the loop counters, hiding the loop the detector exists to find.
+    """
+    out, term = [], None
+    for line in str(cmd or "").split("\n"):
+        if term is not None:
+            if line.strip() == term:
+                term = None
+            continue
+        m = _HEREDOC_R.search(line)
+        if m:
+            term = m.group(2)
+            line = line[:m.start()].rstrip()
+        out.append(line)
+    return "\n".join(out)
+
+
 def gate_identity(cmd, value_flags=frozenset()):
     """What a command actually runs: the program and its target, per pipeline segment.
 
@@ -303,7 +328,7 @@ def gate_identity(cmd, value_flags=frozenset()):
     A false loop spends one interrupt; a false gate spends the detection.
     """
     out = []
-    for seg in _SEG.split(str(cmd or "")):
+    for seg in _SEG.split(strip_heredoc(str(cmd or ""))):
         try:
             toks = shlex.split(seg.strip())
         except ValueError:
@@ -757,6 +782,12 @@ def self_test():
               ts="2026-01-02T03:04:05.678Z"),
         _result("c6", err=False, ts=1011),
         _call("c7", "bash", {"command": "bash -c 'grep self-test notes.md'"}, ts="not-a-time"),
+        _call("c8", "bash", {"command": "cat > /tmp/page.py <<'PY'\n"
+              "# the source of truth is harness/x_harness.py --gate\nX = 1\nPY"}, ts=1012),
+        _result("c8", err=False, ts=1013),
+        _call("c9", "bash", {"command": "python3 tools/z_harness.py --self-test <<'CFG'\n"
+              "mode: strict\nCFG"}, ts=1014),
+        _result("c9", err=False, ts=1015),
         _assistant("I will re-run it.\n\n```\n" + FN + "edit\n```\n"
                    + "the backticked `" + FN + "edit>` form is documentation\n"
                    + "and a stray unclosed " + FN + "edit in prose is a real event\n", ts=1007),
@@ -799,7 +830,7 @@ def self_test():
     ck("T09 a second run with the same transcript rewrites nothing",
        run(agent_dir=agent, cwd=cwd, out_dir=out, policy="")["status"] == "unchanged", "")
     ck("T10 unparsable transcript lines are counted, not fatal",
-       meta["bad_lines"] == 1 and meta["entries"] == 16,
+       meta["bad_lines"] == 1 and meta["entries"] == 20,
        f"entries={meta['entries']} bad_lines={meta['bad_lines']} events={len(ev)}")
     cmd_by_path = {e["cmd"]: e["kind"] for e in ev}
     ck("T13 deleting a file whose name contains a gate word is not a gate - a false gate would "
@@ -839,6 +870,13 @@ def self_test():
     ck("T15 the policy's gate vocabulary applies, and a value-taking flag does not mask the target",
        k3.get("python3 -W ignore tools/y_harness.py --self-test") == "gate"
        and k3.get("rm -rf /tmp/x_harness.py") == "command", json.dumps(k3)[:260])
+    hz = [e for e in ev3 if e.get("cmd", "").startswith("cat > /tmp/page.py")]
+    ck("T30 a gate word carried inside a here-document body is not a gate: the body is data the "
+       "command carries, and a false gate resets the loop counters the detector exists to protect",
+       len(hz) == 1 and hz[0]["kind"] == "command", json.dumps(hz)[:260])
+    hg = [e for e in ev3 if e.get("cmd", "").startswith("python3 tools/z_harness.py")]
+    ck("T31 a real gate that also carries a here-document payload is still a gate",
+       len(hg) == 1 and hg[0]["kind"] == "gate", json.dumps(hg)[:260])
     ck("T14 a gate word carried inside a shell -c payload is not a gate",
        k3.get("bash -c 'grep self-test notes.md'") == "command", json.dumps(k3)[:260])
     ev6 = [e for e in ev if e.get("cmd", "").startswith("python3 -W ignore")]

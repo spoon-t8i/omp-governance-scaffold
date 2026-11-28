@@ -1065,6 +1065,64 @@ REDIR_RE = re.compile(r">>?\s*([\w./@+-]+)")
 # `harness/x.py`: a gate over one file does not vouch for the directory that file sits in.
 DIR_TARGET_RE = re.compile(r"(?<![\w./@+-])(?:[\w.@+-]+/)+")
 DIR_QUOTE_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+_HEREDOC_R = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
+_QUOTE_R = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def argv_text(cmd):
+    """What a command ran, with what argv: here-document bodies, quoted payloads and `#` comments
+    removed. This is what a GATE vouches for -- its identity and its scope.
+
+    `cat > page.py <<PY` naming `docs_gate.sh` in a body comment gates nothing; scoring it as scope
+    turned a documentation write into "the gated file was edited behind the receipt", a wake with no
+    stale referent under it, and a `git commit -m "...docs_gate.sh..."` into a mutation of it.
+    """
+    out, term = [], None
+    for line in str(cmd or "").split("\n"):
+        if term is not None:
+            if line.strip() == term:
+                term = None
+            continue
+        m = _HEREDOC_R.search(line)
+        if m:
+            term = m.group(2)
+            line = line[:m.start()].rstrip()
+        out.append(line)
+    txt = _QUOTE_R.sub(" ", "\n".join(out))
+    return "\n".join(re.split(r"(?:^|\s)#", l, maxsplit=1)[0] for l in txt.split("\n"))
+
+
+# A here-document whose body the shell hands to an interpreter, so the body is code that runs.
+_INTERP_STDIN_R = re.compile(r"\b(?:python3?|pypy|bash|sh|zsh|node|perl|ruby|awk|jq|sqlite3)\b[^|&;]*-\s*$")
+
+
+def exec_text(cmd):
+    """What a command TOUCHED: its argv with quoted payloads and `#` comments dropped, plus a
+    here-document body only when that body is fed to an interpreter.
+
+    A body the interpreter runs is code, and a file it opens for writing really is mutated: dropping
+    bodies wholesale cost 7 of 21 labelled live windows in the corpus replay, real stale receipts the
+    lane went blind to. A body handed to `cat > f` is DATA written to f -- the only file it touches is
+    f, and a path merely named inside it (a comment in a generated page) is prose. Quoted argv stays
+    out either way: `git commit -m "...docs_gate.sh..."` is not an edit of docs_gate.sh, which is
+    where the false wake lived."""
+    out, term, body_code = [], None, False
+    for line in str(cmd or "").split("\n"):
+        if term is not None:
+            if line.strip() == term:
+                term, body_code = None, False
+            elif body_code:
+                out.append(line)
+            continue
+        m = _HEREDOC_R.search(line)
+        head = line[:m.start()] if m else line
+        head = re.split(r"(?:^|\s)#", _QUOTE_R.sub(" ", head), maxsplit=1)[0]
+        out.append(head)
+        if m:
+            term, body_code = m.group(2), bool(_INTERP_STDIN_R.search(head))
+    return "\n".join(out)
 # A command that changes the tree rather than reading it. A bare `>` is a write; a stderr merge
 # (`2>&1`, `2>/dev/null`) is a pipe.
 MUTATION_RES = [
@@ -1092,7 +1150,7 @@ def gate_scope(cmd):
     harness/x.py`, `python3 -m mod`) and the directories it names with a trailing slash (`pytest -q
     tests/`). A gate naming neither (`make`, bare `pytest`) vouches for no file the mutation
     evidence can point at, so arm one cannot key on it - arm two is what covers that gate."""
-    cmd = str(cmd or "")
+    cmd = argv_text(cmd)
     files, dirs = set(), set()
     for tok in GATE_TARGET_RE.findall(cmd):
         base = os.path.basename(tok)
@@ -1113,7 +1171,7 @@ def ev_paths(ev):
     """Every path a call touches: the declared path argument, else path-like tokens in the command
     (`sed -i .. f.py`, `python3 probe.py`, `cat > t.py <<EOF`)."""
     out = [str(ev["path"])] if ev.get("path") else []
-    cmd = str(ev.get("cmd") or ev.get("command") or "")
+    cmd = exec_text(str(ev.get("cmd") or ev.get("command") or ""))
     return out + GATE_TARGET_RE.findall(cmd) + REDIR_RE.findall(cmd)
 
 
@@ -1157,8 +1215,22 @@ def d_referent_stale(events, pol, source, owned=frozenset()):
     rs = pol["referent_stale"]
     if not rs.get("enabled", True):
         return [], 0
-    gi = max((i for i, e in enumerate(events)
-              if str(e.get("kind") or "").lower() == "gate" and _exit(e) == 0), default=None)
+    gpats = []
+    for p in (pol.get("looping") or {}).get("gate_patterns") or []:
+        try:
+            gpats.append(re.compile(p, re.I))
+        except re.error:
+            continue
+
+    def _prose_gate(raw):
+        """True when the writer's gate vocabulary appears only in text the shell never runs."""
+        return bool(gpats) and any(p.search(raw) for p in gpats) \
+            and not any(p.search(argv_text(raw)) for p in gpats)
+
+    cand = [i for i, e in enumerate(events)
+            if str(e.get("kind") or "").lower() == "gate" and _exit(e) == 0
+            and not _prose_gate(str(e.get("cmd") or e.get("command") or ""))]
+    gi = cand[-1] if cand else None
     if gi is None:
         return [], 0
     g = events[gi]
@@ -2388,6 +2460,61 @@ def selftest(live_pol, opts):
                    encoding="utf-8")
     case("N08", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel), want=1,
          probe="ORDER_MIN does not transfer across basenames")
+
+    # N11 / S14, the two-sided pair on what a receipt may vouch for. A `cat > page.py <<PY` whose
+    # body COMMENT names the gated file is a write, not a receipt: that gate word is text the
+    # command carries, never text the shell ran, and labelling it green turned a documentation write
+    # into "the gated file was edited behind the receipt". S14 is the same edit behind a real gate -
+    # without it the fix is only a mute. N12/S15 are the mutation-side halves: a quoted payload is
+    # data, an interpreter's here-document body is code.
+    r = mk("n11")
+    tel = base / "n11.jsonl"
+    tel.write_text("\n".join([json.dumps({"t": fresh, "kind": "gate", "exit": 0, "cmd":
+                                           "cat > /tmp/page.py <<'PY'\n"
+                                           "# the source of truth is harness/x.py --gate\n"
+                                           "X = 1\nPY"}),
+                               json.dumps({"t": fresh, "kind": "patch", "path": "harness/x.py"}),
+                               json.dumps({"t": fresh, "kind": "command", "exit": 0,
+                                           "cmd": "python3 harness/y.py"})]) + "\n",
+                   encoding="utf-8")
+    case("N11", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel), want=0,
+         probe="a gate word inside a here-document body is no receipt")
+
+    r = mk("s14")
+    tel = base / "s14.jsonl"
+    tel.write_text("\n".join([json.dumps({"t": fresh, "kind": "gate", "exit": 0,
+                                           "cmd": "bash harness/x.py --gate"}),
+                               json.dumps({"t": fresh, "kind": "patch", "path": "harness/x.py"}),
+                               json.dumps({"t": fresh, "kind": "command", "exit": 0,
+                                           "cmd": "python3 harness/y.py"})]) + "\n",
+                   encoding="utf-8")
+    case("S14", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel),
+         probe="the same edit behind a real green gate still wakes")
+
+    r = mk("n12")
+    tel = base / "n12.jsonl"
+    tel.write_text("\n".join([json.dumps({"t": fresh, "kind": "gate", "exit": 0,
+                                           "cmd": "bash harness/x.py --gate"}),
+                               json.dumps({"t": fresh, "kind": "patch", "exit": 0, "cmd":
+                                           'git commit -am "docs: sync harness/x.py"'}),
+                               json.dumps({"t": fresh, "kind": "command", "exit": 0,
+                                           "cmd": "python3 harness/y.py"})]) + "\n",
+                   encoding="utf-8")
+    case("N12", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel), want=0,
+         probe="a commit message naming the gated file is not an edit of it")
+
+    r = mk("s15")
+    tel = base / "s15.jsonl"
+    tel.write_text("\n".join([json.dumps({"t": fresh, "kind": "gate", "exit": 0,
+                                           "cmd": "bash harness/x.py --gate"}),
+                               json.dumps({"t": fresh, "kind": "patch", "exit": 0, "cmd":
+                                           "python3 - <<'PY'\n"
+                                           "open('harness/x.py', 'w').write('x')\nPY"}),
+                               json.dumps({"t": fresh, "kind": "command", "exit": 0,
+                                           "cmd": "python3 harness/y.py"})]) + "\n",
+                   encoding="utf-8")
+    case("S15", "SURPRISE_REFERENT_STALE", r, rspol(), telemetry=str(tel),
+         probe="a here-document the interpreter runs edits the file it opens")
 
     # S12 / N09, the two-sided pair on the raw-XML lane's own blind spot. The harness serializes
     # the calls it records into the very turn file this lane scans, so a bare substring scan reads
