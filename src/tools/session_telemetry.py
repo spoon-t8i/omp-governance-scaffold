@@ -362,7 +362,7 @@ def extract(path, gate_res, value_flags=frozenset()):
     events, texts = [], []
     pending = {}
     seen = set()
-    counts = {"entries": 0, "bad_lines": 0, "calls": 0, "results": 0, "gates": 0, "patches": 0,
+    counts = {"entries": 0, "bad_lines": 0, "calls": 0, "echoes": 0, "results": 0, "gates": 0, "patches": 0,
               "transcripts": 0, "replays": 0}
     for one in paths:
         handle = open(one, encoding="utf-8", errors="replace")
@@ -396,9 +396,12 @@ def extract(path, gate_res, value_flags=frozenset()):
                     continue
                 if role != "assistant":
                     continue
-                for block in _blocks(payload):
-                    if not isinstance(block, dict):
-                        continue
+                blocks = [b for b in _blocks(payload) if isinstance(b, dict)]
+                # A parsed call and the adapter's text echo of that same call arrive in one
+                # message. The echo is what the recorder would otherwise copy into the raw-XML
+                # lane's scan surface, where it reads as a leaked call the session cannot act on.
+                parsed_call = any(str(b.get("type") or "") in CALL_KEYS for b in blocks)
+                for block in blocks:
                     btype = str(block.get("type") or "")
                     if btype in CALL_KEYS:
                         name = str(block.get("name") or "").lower().replace(" ", "_")
@@ -435,8 +438,31 @@ def extract(path, gate_res, value_flags=frozenset()):
                     elif btype == "text":
                         body = block.get("text")
                         if isinstance(body, str) and body.strip():
+                            if parsed_call and serialization_only(body):
+                                counts["echoes"] += 1  # counted, never silently dropped
+                                continue
                             texts.append((stamp, body))
     return events, texts, counts
+
+
+# The adapter echoes a parsed call back as assistant text beside the toolCall block it was
+# parsed from, and its parser eats the closing ">" of the parameter tag. That echo is the
+# recorder quoting a call, not the model leaking one, so it must not reach the lane's scan
+# surface. Only the echo is dropped: a text block with prose around the call, or a call with no
+# parsed twin in the same message, is a real leak and stays in the slice.
+SERIAL_TAG_CLOSED = re.compile(
+    r"^\s*</?(?:tool_call|invoke\b|function\b|parameter\b|arg\b|result\b)[^\n]*>\s*$")
+SERIAL_TAG_UNCLOSED = re.compile(
+    r"^\s*</?(?:tool_call|invoke\b|function\b|parameter\b|arg\b|result\b)[^>\n]*$")
+SERIAL_CLOSE = ("</tool_call>", "</invoke>")
+
+
+def serialization_only(text):
+    """True when a text block is nothing but one closed tool-call envelope of tag-only lines."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not lines or not any(ln in SERIAL_CLOSE for ln in lines):
+        return False
+    return all(SERIAL_TAG_CLOSED.match(ln) or SERIAL_TAG_UNCLOSED.match(ln) for ln in lines)
 
 
 def turn_slice(texts, limit=24000):

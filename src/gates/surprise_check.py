@@ -1238,8 +1238,20 @@ def gate_stamp(node, pol):
     return None, None
 
 
+# A turn file mixes two authors. The harness serializes a tool call as a record whose body is
+# nothing but the envelope; a model leaking a call into prose is a different thing, and the lane
+# must read only the second. A line counts as serialization only when it is nothing but a
+# structural tag AND the envelope it opens closes later with nothing but structural lines inside.
+# The adapter's parser consumes the closing ">" of a parameter tag when it lifts the argument out
+# of the stream, so the recorder writes that one line without it - still structural, still inside
+# an envelope that closes clean. A prose line inside the envelope, or an envelope that never
+# closes, stays prose. A whole record that is a complete prose-free envelope is indistinguishable
+# from the harness's own write and is skipped; the skip is never silent, it is counted in a note.
 XML_TAG_LINE = re.compile(
     r"^\s*</?(?:tool_call|invoke\b|function\b|parameter\b|arg\b|result\b)[^\n]*>\s*$")
+# A structural line whose closing ">" the parser ate: the tag name, then no ">" anywhere in it.
+XML_UNCLOSED_TAG_LINE = re.compile(
+    r"^\s*</?(?:tool_call|invoke\b|function\b|parameter\b|arg\b|result\b)[^>\n]*$")
 ENVELOPE_CLOSE = (("tool_call", "</tool_call>"), ("invoke", "</invoke>"),
                   ("function", "</function>"), ("parameter", "</parameter>"),
                   ("arg", "</arg>"))
@@ -1264,7 +1276,7 @@ def serialized_xml_lines(lines):
                 if inner == closer:
                     ignore.update(range(i + 1, j + 2))
                     break
-                if not XML_TAG_LINE.match(inner):
+                if not (XML_TAG_LINE.match(inner) or XML_UNCLOSED_TAG_LINE.match(inner)):
                     break  # prose inside the envelope: leaked, not serialized
             break
     return ignore
@@ -1295,8 +1307,8 @@ def d_post_compact(repo, pol, ctx, turn_file):
             if suppressed:
                 notes.append(
                     f"raw-XML lane: {suppressed} structural line(s) of {p.name} ignored as "
-                    "harness serialization of a tool call, not leaked prose - a truncated "
-                    "envelope or one wrapped in sentences still fires")
+                    "harness serialization of a tool call, not leaked prose - an envelope with "
+                    "a prose line inside, or one that never closes, still fires")
             if hits:
                 pat, n, line = hits[0]
                 findings.append(finding(
@@ -2394,12 +2406,35 @@ def selftest(live_pol, opts):
     case("N09", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn), want=0,
          note="harness serialization",
          probe="serialized turn record is the recorder, not a leaked call")
+    # N10: the recorder's real line shape. The adapter's parser eats the closing ">" of the
+    # parameter tag, so the recorded line is <parameter=path="x:raw with no ">"; requiring a
+    # complete tag read that structural line as prose and fired a CRITICAL at every boundary.
+    turn = base / "s12-serialized-unclosed.txt"
+    turn.write_text("# turn 2026-11-28T14:51:32Z\n"
+                    "<tool_call>\n<function=read>\n"
+                    '<parameter=path="src/gates/spine_check.py:1-2:raw\n</parameter>\n'
+                    "</function>\n"
+                    "</tool_call>\n"
+                    "# turn 2026-11-28T15:17:26Z\n"
+                    "whole-file grading of the spine is wrong scope\n", encoding="utf-8")
+    case("N10", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn), want=0,
+         note="harness serialization",
+         probe="a serialized parameter line whose closing > the parser ate is still the recorder")
     turn = base / "s12-leaked.txt"
     turn.write_text("# turn 2026-11-28T15:17:26Z\n"
                     "I will apply it now <tool_call><function=edit>\n"
                     "and then re-run the gate\n", encoding="utf-8")
     case("S12", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn),
          probe="tool_call envelope leaked into prose")
+    # S13 bounds the relaxation: the recorder never writes prose, so a prose line inside an
+    # envelope that closes cleanly is a leaked call, not serialization.
+    turn = base / "s13-prose-inside.txt"
+    turn.write_text("# turn 2026-11-28T15:17:26Z\n"
+                    "<tool_call>\n<function=edit>\n"
+                    "and then re-run the gate\n"
+                    "</function>\n</tool_call>\n", encoding="utf-8")
+    case("S13", "SURPRISE_POST_COMPACT_DRIFT", r, polx(gitref), turn=str(turn),
+         probe="prose inside a cleanly closed envelope is a leaked call")
 
     # clean side: a spine that did nothing wrong must stay dormant on every lane. The session
     # lanes are global by nature - the loop lane sees whatever session is writing telemetry, which
