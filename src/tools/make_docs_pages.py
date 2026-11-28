@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""make_docs_pages.py - build the two public docs pages from a receipts document.
+"""make_docs_pages.py - build the three public docs pages from receipts documents.
 
 Why this exists: both pages advertise that every numeral on them is read from
 `run/receipts.json`. That claim is only checkable if the page is the build artifact of a
 program kept in the repo, not text typed into an editor. This emits `docs/cfs-gate4.md`
 (one campaign's receipts, in context) and `docs/omp-governance.md` (the ten laws, each
-bound to the receipt that proves it).
+bound to the receipt that proves it) and `docs/chemgym-v2.md` (the chemistry suite's
+receipts, read from its own receipts document).
 
 Contract
   - every numeral, path, sha, mtime and verdict is read from the receipts document, the
@@ -17,6 +18,7 @@ Contract
 
 Modes
   make_docs_pages.py [--receipts PATH] [--manifest PATH] [--docs DIR]
+                     [--chemgym-receipts PATH]
 """
 import argparse
 import json, re, pathlib
@@ -26,6 +28,9 @@ _ap = argparse.ArgumentParser(description='build the scaffold docs pages from re
 _ap.add_argument('--receipts', default='/home/snoop/tmp/guppi_gate4/run/receipts.json')
 _ap.add_argument('--manifest', default=None,
                  help='stale_pre_patch/manifest.json (default: sibling of the receipts file)')
+_ap.add_argument('--chemgym-receipts',
+                 default='/home/snoop/Projects/omp-governance-scaffold/harness/vendor/chemgym-v2/run/receipts.json',
+                 help='chemgym-v2 run/receipts.json (vendored snapshot)')
 _ap.add_argument('--docs', default='/home/snoop/Projects/omp-governance-scaffold/docs')
 _a = _ap.parse_args()
 RJ = _a.receipts
@@ -33,6 +38,7 @@ DOCS = pathlib.Path(_a.docs)
 MAN_PATH = _a.manifest or str(pathlib.Path(RJ).resolve().parent / 'stale_pre_patch'
                              / 'manifest.json')
 R = json.load(open(RJ))
+CG = json.load(open(_a.chemgym_receipts))
 F, C, D, RF = R['facts'], R['constants'], R['derived'], R['receipt_files']
 _TS = sorted(x['mtime_utc'] for x in RF.values() if x.get('mtime_utc'))
 SPAN_H = (datetime.strptime(_TS[-1], '%Y-%m-%dT%H:%M:%SZ')
@@ -667,3 +673,222 @@ for _p, _tag in ((DOCS / 'projects.md', 'gate4-entry'), (DOCS / 'index.html', 'g
     _region = _t.split(f'<!-- BEGIN GENERATED: {_tag} -->', 1)[1].split('<!-- END GENERATED:', 1)[0]
     _bad = re.findall(r'MISSING|\bNone\b|\bnan\b|\{\w', _region)
     assert not _bad, f'{_p}:{_tag}: unrendered placeholder {_bad[:5]}'
+
+# ---------------------------------------------------------------- chemgym-v2 page
+# The chemistry suite's receipts document has the same shape (facts / constants /
+# derived / receipt_files), so the same discipline applies: every numeral below is
+# read from CGF/CGC/CGD, nothing is transcribed. The helpers are the guppi ones,
+# bound to chemgym facts.
+CGF, CGC, CGD, CGRF = CG['facts'], CG['constants'], CG['derived'], CG['receipt_files']
+
+def cv(p, nd=4):
+    return fmt(CGF[p], nd)
+
+def csub(prefix):
+    p = prefix + '.'
+    return {k[len(p):]: CGF[k] for k in sorted(CGF)
+            if k.startswith(p) and not k.endswith('.len')}
+
+def ctable(prefix, nd=4):
+    return table(['field', 'value'],
+                 [(f'`{k}`', fmt(v, nd)) for k, v in csub(prefix).items()
+                  if isinstance(v, (int, float, bool))])
+
+def cidxs(prefix, field):
+    pat = re.compile(re.escape(prefix) + r'\.(\d+)\.' + re.escape(field) + r'$')
+    return sorted({int(m.group(1)) for m in (pat.match(k) for k in CGF) if m})
+
+BENCHES = sorted({k.split('.')[2] for k in CGF if k.startswith('gate3_rl_benchmark.benches.')
+                  and k.split('.')[2] != 'len'})
+SHORTCUTS = cidxs('acid_carbonate_physics.mutant_controls', 'name')
+DOM = CGD['sarsa_dominates_n']
+EPS = [CGF[f'gate3_rl_benchmark.benches.{b}.episodes'] for b in BENCHES]
+
+K = []
+W = K.append
+W('---')
+W('layout: default')
+W('title: "ChemGym-v2: Physics-Benched Chemistry Environments - Receipted Bench Suite"')
+W('---')
+W('')
+W('[&larr; Back to Home](index.html)')
+W('')
+W('# ChemGym-v2: Five Gymnasium-Style Chemistry Benches, Library-Read Physics, and a SARSA Solver Audited Against Both')
+W('')
+W(f'*Project `chemgym-v2`. Receipts document `run/receipts.json`, collector `src/make_receipts.py` at commit '
+  f'`{CG["collector"]["last_commit_touching"][:7]}`, bench engine at git pin `{cv("gate3_rl_benchmark.git_pin")[:7]}`. '
+  'Every number below is read from that document by the page generator; none is typed by hand. '
+  'Licensed under the Apache License, Version 2.0.*')
+W('')
+W('## Tier 1: The High-Level Picture (Plain-English Intuition)')
+W('')
+W(f'ChemGym-v2 is {cv("gate3_rl_benchmark.benches.len", 0)} small chemistry environments in the Gymnasium style '
+  '(`*-v0` ids): a flash vapor-liquid separator, a liquid-liquid extraction vial, an aqueous speciation beaker, '
+  'a Wurtz reaction flask, and a jar of vinegar with a spoon of baking soda. Each bench hands an agent labelled '
+  'action slots (open a valve, tip the jar, read the gas cylinder) and a reward, and every physical quantity it '
+  'reports - pressure, temperature, moles, litres of gas, IR band height - is computed from published '
+  'component-data libraries, not fitted curves. The tie is explicit on the acid-carbonate bench: the engine\'s '
+  f'reaction enthalpy `{cv("acid_carbonate_physics.headline.dH_rxn_J_per_mol", 0)}` J/mol must equal the Hess-law '
+  f'sum over library heats of formation, `{cv("acid_carbonate_physics.headline.hess_dH_J_per_mol_from_library", 0)}` '
+  'J/mol, to the last digit - and the reaction is endothermic, so the jar goes cold.')
+W('')
+W(f'The RL question: can a tabular SARSA agent learn the action sequence that reaches a bench\'s goal, and can '
+  'any single fixed action slot reach it by shortcut? The receipt answers both. Under a pre-registered rule '
+  f'(`{DOM["rule"]}`), SARSA dominates on **{fmt(DOM["value"], 0)} of {cv("gate3_rl_benchmark.benches.len", 0)}** '
+  f'benches. And {fmt(CGD["shortcuts_n"]["value"], 0)} named shortcut controls - each one a deliberate way the '
+  f'goal could be faked - were each caught by named physics checks: {cv("acid_carbonate_physics.mutant_controls_passed", 0)} '
+  f'of {cv("acid_carbonate_physics.mutant_controls_total", 0)} positive-control mutations caught, every one '
+  'leaving the engine clean afterwards.')
+W('')
+W('## Tier 2: Systems Engineering, Receipts and Honest Boundaries')
+W('')
+W(f'### 1 The bench suite and the SARSA verdict (gate `{CGF["gate3_rl_benchmark.gate"]}`)')
+W('')
+W(table(['bench', 'episodes', 'random mean', 'best single-slot mean', 'SARSA return', 'steps', 'terminated',
+         'reference solver'],
+        [(f'`{b}`', cv(f'gate3_rl_benchmark.benches.{b}.episodes', 0),
+          cv(f'gate3_rl_benchmark.benches.{b}.random_mean', 3),
+          cv(f'gate3_rl_benchmark.benches.{b}.best_single_slot_mean', 3),
+          cv(f'gate3_rl_benchmark.benches.{b}.sarsa_return', 3),
+          cv(f'gate3_rl_benchmark.benches.{b}.sarsa_steps', 0),
+          fmt(CGF[f'gate3_rl_benchmark.benches.{b}.sarsa_terminated']),
+          cv(f'gate3_rl_benchmark.benches.{b}.solve_reference', 3)) for b in BENCHES]))
+W('')
+W('### 2 Contract gate, determinism and guardrails')
+W('')
+W(f'The GATE-3 harness runs {cv("gate3_rl_benchmark.checks", 0)} contract checks with '
+  f'{cv("gate3_rl_benchmark.fails.len", 0)} failures. The determinism leg re-runs the greedy policy and '
+  f'reproduces the `FlashVleV2-v0` SARSA return exactly (`{cv("gate3_rl_benchmark.determinism.greedy_return", 3)}`), '
+  f'with the learning curve hashed to `{CGF["gate3_rl_benchmark.determinism.curve_sha256_16"]}`. Thermal '
+  f'guardrails are scored, not clamped: cold `r = {cv("gate3_rl_benchmark.thermal.cold_r")}`, window '
+  f'`r = {cv("gate3_rl_benchmark.thermal.window_r")}`, over-relief `r = {cv("gate3_rl_benchmark.thermal.relief_r", 1)}`. '
+  f'The run took `{cv("gate3_rl_benchmark.wall_s", 2)}` s at git pin `{cv("gate3_rl_benchmark.git_pin")[:7]}` '
+  f'(receipt date `{CGF["gate3_rl_benchmark.date"]}`).')
+W('')
+W(f'### 3 The acid-carbonate bench: {cv("acid_carbonate_physics.checks_passed", 0)}/'
+  f'{cv("acid_carbonate_physics.checks_total", 0)} physics and contract checks')
+W('')
+W(f'One US tablespoon of pickling vinegar (`{cv("acid_carbonate_physics.declared_protocol.vinegar_acid_kg_m3", 1)} '
+  f'kg/m3 acetic acid`) meets one tablespoon of baking soda (`{cv("acid_carbonate_physics.declared_protocol.soda_kg_per_tbsp", 4)} kg`, '
+  f'`{cv("acid_carbonate_physics.declared_protocol.tbsp_m3", 9)} m3` per tablespoon) in a sealed jar; the CO2 is '
+  f'collected over water. The goal is declared before the run: `{cv("acid_carbonate_physics.declared_protocol.target_gas_L", 2)} L` '
+  f'of gas and a carboxylate IR band of `{cv("acid_carbonate_physics.declared_protocol.target_salt_A1555", 2)}`, reached '
+  f'through {cv("acid_carbonate_physics.declared_protocol.actions.len", 0)} labelled slots: '
+  + ', '.join(f'`{CGF[f"acid_carbonate_physics.declared_protocol.actions.{i}"]}`'
+              for i in range(CGF['acid_carbonate_physics.declared_protocol.actions.len'])) + '.')
+W('')
+W('The headline state the engine reports after the full protocol:')
+W('')
+W(ctable('acid_carbonate_physics.headline'))
+W('')
+W(f'### 4 Law 2 counterparty controls: {cv("acid_carbonate_physics.mutant_controls_passed", 0)}/'
+  f'{cv("acid_carbonate_physics.mutant_controls_total", 0)} caught')
+W('')
+W(f'The gate ships positive-control mutations: each breaks one physical law inside the engine and must be caught '
+  f'by a named check. {fmt(CGD["shortcuts_n"]["value"], 0)} of them are named shortcut controls '
+  f'(`{CGD["shortcuts_n"]["formula"]}` = `{fmt(CGD["shortcuts_n"]["value"], 0)}`). Each row is the receipt\'s own '
+  'record of how the break was introduced, which checks caught it, and whether the engine was clean after the '
+  'mutation was reverted:')
+W('')
+W(table(['control', 'how it was broken', 'caught by', 'clean after'],
+        [(f'`{CGF[f"acid_carbonate_physics.mutant_controls.{i}.name"]}`',
+          CGF[f'acid_carbonate_physics.mutant_controls.{i}.how'],
+          '; '.join(CGF[f'acid_carbonate_physics.mutant_controls.{i}.caught_by.{j}']
+                    for j in range(CGF[f'acid_carbonate_physics.mutant_controls.{i}.caught_by.len'])),
+          fmt(CGF[f'acid_carbonate_physics.mutant_controls.{i}.clean_after']))
+         for i in SHORTCUTS]))
+W('')
+W('### 5 Provenance')
+W('')
+W(table(['engine file', 'sha256 (16)'],
+        [(f'`{k}`', f'`{x}`') for k, x in csub('acid_carbonate_physics.engine_sha256_16').items()]))
+W('')
+W(table(['receipt file', 'mtime (UTC)', 'dirty', 'last commit touching'],
+        [(f'`{k}`', CGRF[k]['mtime_utc'], fmt(CGRF[k]['dirty']), CGRF[k]['last_commit_touching'][:7])
+         for k in sorted(CGRF)]))
+W('')
+W(f'Python `{CGF["acid_carbonate_physics.python"]}`; physics receipt stamped `{CGF["acid_carbonate_physics.utc"]}`; '
+  f'collector `{CG["collector"]["script"]}` (`{CG["collector"]["sha256"][:12]}`), `dirty = {fmt(CG["collector"]["dirty"])}`.')
+W('')
+W('### 6 Honest Boundaries')
+W('')
+W(f'* **`wall_s` is telemetry, not a claim:** `{cv("gate3_rl_benchmark.wall_s", 2)} s` is runtime cost; the '
+  'volatility partition keeps it (and every timestamp) out of the promoted STATE.md/PERM.md rows - it lives here '
+  'because this page is the receipt view.')
+W('* **SARSA returns are stored rounded to 3 decimals:** the dominance margin is '
+  f'`{fmt(CGC["dominance_margin"], 1)}`, far above the rounding, so the verdict is not a rounding artefact.')
+W(f'* **{cv("acid_carbonate_physics.mutant_controls_total", 0)} controls ran, {fmt(CGD["shortcuts_n"]["value"], 0)} '
+  'are itemised:** the receipt names the shortcut controls above; the remaining controls are counted in the pass '
+  'total but not listed in this document.')
+W('* **Kitchen scale, single vessel:** ideal-gas headspace over water with Henry dissolution - the physics is '
+  'real but the bench is a jar, not a plant.')
+W(f'* **Per-bench episode budgets differ** (`{min(EPS)}`-`{max(EPS)}` episodes): the benchmark compares solvers '
+  'within a bench, not across benches.')
+W('')
+W('## Related')
+W('')
+W('* [Ten Governance Laws](omp-governance.html) - the laws these gates exercise.')
+W('* [CFS Gate 4](cfs-gate4.html) - the same receipt discipline on a radio-astronomy null.')
+W('')
+W('*Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE` in the repository root.*')
+W('')
+(DOCS / 'chemgym-v2.md').write_text('\n'.join(K))
+print('wrote', DOCS / 'chemgym-v2.md', (DOCS / 'chemgym-v2.md').stat().st_size)
+_t = (DOCS / 'chemgym-v2.md').read_text()
+_bad = re.findall(r'MISSING|\bNone\b|\bnan\b|\{\w', _t)
+assert not _bad, f'chemgym-v2.md: unrendered placeholder {_bad[:5]}'
+
+splice(DOCS / 'index.html', 'chemgym-card', f"""    <section>
+      <h2>ChemGym-v2: The Same Laws, Applied to Chemistry</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3><a href="chemgym-v2.html" style="color: var(--accent)">ChemGym-v2: Physics-Benched Chemistry</a></h3>
+          <p>{cv('gate3_rl_benchmark.benches.len', 0)} Gymnasium-style benches whose physics is read from published
+          component libraries &mdash; a <code>{cv('acid_carbonate_physics.headline.dH_rxn_J_per_mol', 0)} J/mol</code>
+          reaction enthalpy tied to its Hess sum &mdash; tabular SARSA dominant on
+          <code>{fmt(DOM['value'], 0)}</code> of <code>{cv('gate3_rl_benchmark.benches.len', 0)}</code> benches,
+          <code>{cv('acid_carbonate_physics.checks_passed', 0)}/{cv('acid_carbonate_physics.checks_total', 0)}</code>
+          physics checks and <code>{cv('acid_carbonate_physics.mutant_controls_passed', 0)}/{cv('acid_carbonate_physics.mutant_controls_total', 0)}</code>
+          mutant controls caught.</p>
+        </div>
+        <div class="card pos">
+          <h3><a href="chemgym-v2.html" style="color: var(--accent)">How This Card Stays True</a></h3>
+          <p>Every number on this card is read from <code>chemgym-v2/run/receipts.json</code> by the same page
+          generator that writes the campaign pages. The docs gate rebuilds them from a vendored snapshot, refuses
+          any difference, and carries mutant arms that must bite.</p>
+        </div>
+      </div>
+    </section>""")
+splice(DOCS / 'projects.md', 'chemgym-entry',
+       f'* [ChemGym-v2: Physics-Benched Chemistry Environments](chemgym-v2.md) - '
+       f'{cv("gate3_rl_benchmark.benches.len", 0)} gym-style chemistry benches with library-read physics, '
+       f'SARSA dominant on {fmt(DOM["value"], 0)}/{cv("gate3_rl_benchmark.benches.len", 0)} benches, '
+       f'{cv("acid_carbonate_physics.checks_passed", 0)}/{cv("acid_carbonate_physics.checks_total", 0)} physics '
+       f'checks and {cv("acid_carbonate_physics.mutant_controls_passed", 0)}/'
+       f'{cv("acid_carbonate_physics.mutant_controls_total", 0)} mutant controls caught.')
+splice_line(DOCS / 'llms.txt', '- [ChemGym-v2:',
+            f'- [ChemGym-v2: Physics-Benched Chemistry Environments]'
+            f'(https://spoon-t8i.github.io/omp-governance-scaffold/chemgym-v2.md): '
+            f'{cv("gate3_rl_benchmark.benches.len", 0)} gym-style chemistry benches, library-read physics, '
+            f'SARSA dominant on {fmt(DOM["value"], 0)}/{cv("gate3_rl_benchmark.benches.len", 0)} benches, '
+            f'{cv("acid_carbonate_physics.mutant_controls_passed", 0)}/'
+            f'{cv("acid_carbonate_physics.mutant_controls_total", 0)} mutant controls caught.')
+
+# The chemgym page must not be silently dropped: its headline numerals, the bench ids
+# and the collector commit have to appear in the built page, and the index card must
+# carry the dominance verdict.
+_cg = (DOCS / 'chemgym-v2.md').read_text()
+for _p in (cv('acid_carbonate_physics.headline.dH_rxn_J_per_mol', 0),
+           cv('acid_carbonate_physics.headline.hess_dH_J_per_mol_from_library', 0),
+           cv('acid_carbonate_physics.checks_passed', 0) + '/' + cv('acid_carbonate_physics.checks_total', 0),
+           cv('acid_carbonate_physics.mutant_controls_passed', 0) + '/' + cv('acid_carbonate_physics.mutant_controls_total', 0),
+           cv('gate3_rl_benchmark.thermal.window_r'),
+           fmt(DOM['value'], 0) + ' of ' + cv('gate3_rl_benchmark.benches.len', 0),
+           CG['collector']['last_commit_touching'][:7]):
+    assert _p in _cg, f'chemgym-v2.md missing headline {_p!r}'
+for _b in BENCHES:
+    assert _b in _cg, f'chemgym-v2.md missing bench {_b}'
+_ix = (DOCS / 'index.html').read_text()
+assert 'chemgym-v2.html' in _ix, 'index.html lost the chemgym card'
+assert fmt(DOM['value'], 0) in _ix, 'index card lost the dominance verdict'
+print('chemgym-v2 page guard: ok')

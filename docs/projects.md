@@ -70,6 +70,10 @@ Between August and November 2026, we stress-tested the **Oh-My-Pi (OMP)** govern
 * **Governance under load:** `10` gate-arm receipts with every mutant arm exiting `1`; the `4,096 MiB` RSS ceiling measured per engine leg (max `3,612.9 MiB`) after one honest breach that was fixed and re-gated (pre-fix leg `4,141.3 MiB`).
 <!-- END GENERATED: gate4-entry -->
 
+<!-- BEGIN GENERATED: chemgym-entry -->
+* [ChemGym-v2: Physics-Benched Chemistry Environments](chemgym-v2.md) - 5 gym-style chemistry benches with library-read physics, SARSA dominant on 5/5 benches, 158/158 physics checks and 23/23 mutant controls caught.
+<!-- END GENERATED: chemgym-entry -->
+
 ---
 
 ## Showcase 1: Strata v17 — Taphonomic Deep-Time Biosphere & De-Extinction Engine

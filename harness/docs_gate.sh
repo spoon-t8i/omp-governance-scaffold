@@ -2,8 +2,9 @@
 # spine-gate: --gate
 # docs_gate.sh - the generated pages and the llms-full.txt bundle can never rot.
 #
-# Why: docs/cfs-gate4.md and docs/omp-governance.md are the build artifact of
-# src/tools/make_docs_pages.py over a receipts snapshot, index.html / projects.md /
+# Why: docs/cfs-gate4.md, docs/chemgym-v2.md and docs/omp-governance.md are the
+# build artifact of src/tools/make_docs_pages.py over receipts snapshots, index.html /
+# projects.md /
 # llms.txt carry regions that same generator rewrites, and docs/llms-full.txt is the
 # build artifact of src/tools/bundle_docs.py over the pages. Every link rots silently:
 # a numeral hand-edited into a generated page, a campaign re-run whose numbers never
@@ -11,15 +12,17 @@
 # contain. So this gate rebuilds into a scratch copy and refuses ANY difference -
 # regenerating in place would overwrite the rot and certify nothing.
 #
-# Self-containment: the receipts document and the stale-pre-patch manifest the
+# Self-containment: the receipts documents and the stale-pre-patch manifest the
 # generator reads are vendored under harness/vendor/ (hashes pinned in
-# harness/vendor/SHA256SUMS), so the gate runs with no ~/tmp at all. When the live
-# campaign repo IS on disk the gate additionally asserts byte parity with it and
-# proves it wrote nothing there - guppi_gate4 is read-only to this gate, always.
+# harness/vendor/SHA256SUMS and harness/vendor/chemgym-v2/SHA256SUMS), so the gate
+# runs with no ~/tmp or ~/Projects at all. When a live campaign repo IS on disk the
+# gate additionally asserts byte parity with it and proves it wrote nothing there -
+# guppi_gate4 and chemgym-v2 are read-only to this gate, always.
 #
 # Arms (causal exit contract, same as the guppi gates)
 #   positive / --gate (rc=0)  : every check below passes and both mutant arms exit 1.
-#   --mutant-stale-numeral (rc=1): perturb a generated numeral in a scratch copy; the
+#   --mutant-stale-numeral (rc=1): perturb a generated numeral in each generated
+#       campaign page in a scratch copy; the
 #       arm exits 1 only if the perturbation landed AND fresh-generation parity
 #       rejects it AND the reference regeneration itself matches the committed page
 #       (so the rejection is attributable to the perturbation, not to a broken
@@ -28,7 +31,7 @@
 #       generator never writes, so only the bundle check can see it - and require
 #       bundle_docs.py --check to reject it with STALE.
 #   --sync-vendor               : refresh the vendored snapshot from the live campaign
-#       repo and re-pin SHA256SUMS. The only arm that writes under harness/, and the
+#       repos and re-pin both SHA256SUMS files. The only arm that writes under harness/, and the
 #       legitimate repair path when the campaign re-runs.
 # F9: the final line always carries "checks: N" on every arm.
 set -uo pipefail
@@ -40,6 +43,9 @@ DOCS=docs
 VEND=harness/vendor/guppi_gate4/run
 SUMS=harness/vendor/SHA256SUMS
 LIVE=/home/snoop/tmp/guppi_gate4/run
+CGVEND=harness/vendor/chemgym-v2/run
+CGSUMS=harness/vendor/chemgym-v2/SHA256SUMS
+CGLIVE=/home/snoop/Projects/chemgym-v2/run
 N=0; PASS=0; FAIL=0
 chk(){ N=$((N+1)); if [ "$2" = "$3" ]; then PASS=$((PASS+1)); printf 'PASS %s (%s)\n' "$1" "$3"; else FAIL=$((FAIL+1)); printf 'FAIL %s: want %s got %s\n' "$1" "$3" "$2"; fi; }
 yes_(){ chk "$1" "$2" yes; }
@@ -49,7 +55,7 @@ yesrc(){ local r; "$@" >/dev/null 2>&1; r=$?; [ "$r" = 0 ] && printf yes || prin
 parses(){ yesrc python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$1"; }
 # tree_digest <dir>: content hash of every file, path-independent.
 tree_digest(){ (cd "$1" && find . -type f | sort | xargs -d '\n' sha256sum | sha256sum) | cut -d' ' -f1; }
-gen(){ python3 "$GEN" --receipts "$VEND/receipts.json" --docs "$1"; }
+gen(){ python3 "$GEN" --receipts "$VEND/receipts.json" --chemgym-receipts "$CGVEND/receipts.json" --docs "$1"; }
 
 MODE=pos
 case "${1:-}" in
@@ -71,6 +77,9 @@ if [ "$MODE" = pos ]; then
   yes_ 'vendored manifest.json parses'    "$([ -s "$VEND/stale_pre_patch/manifest.json" ] && parses "$VEND/stale_pre_patch/manifest.json")"
   # 3 the snapshot matches its own pinned hashes: self-contained without ~/tmp.
   yes_ 'vendored snapshot matches SHA256SUMS' "$( (cd "$VEND" && yesrc sha256sum -c --status "$REPO/$SUMS") )"
+  # 3b the chemgym snapshot is real JSON and matches its own pinned hashes.
+  yes_ 'vendored chemgym receipts.json parses' "$([ -s "$CGVEND/receipts.json" ] && parses "$CGVEND/receipts.json")"
+  yes_ 'vendored chemgym snapshot matches SHA256SUMS' "$( (cd "$CGVEND" && yesrc sha256sum -c --status "$REPO/$CGSUMS") )"
   # 4 live parity, when the campaign repo is on disk.
   LIVE_BEFORE=''
   if [ -d "$LIVE" ]; then
@@ -80,6 +89,14 @@ if [ "$MODE" = pos ]; then
     yes_ 'live receipts snapshot == vendored snapshot' "$([ "$live_now" = "$vend" ] && printf yes || printf no)"
   else
     printf 'INFO live campaign repo absent: vendored snapshot is authoritative\n'
+  fi
+  CGLIVE_BEFORE=''
+  if [ -d "$CGLIVE" ]; then
+    CGLIVE_BEFORE="$(sha "$CGLIVE/receipts.json")"
+    yes_ 'live chemgym receipts snapshot == vendored snapshot' \
+         "$([ "$(sha "$CGLIVE/receipts.json")" = "$(sha "$CGVEND/receipts.json")" ] && printf yes || printf no)"
+  else
+    printf 'INFO live chemgym repo absent: vendored snapshot is authoritative\n'
   fi
   # 5 the gate must not regenerate in place: committed docs byte-stable throughout.
   DOCS_BEFORE="$(tree_digest "$DOCS")"
@@ -100,7 +117,7 @@ if [ "$MODE" = pos ]; then
   yes_ 'bundle_docs --check current on fresh copy' "$(yesrc python3 "$BUND" --docs "$TMP/a" --check)"
   # 9 leak guard, independent of the generator's own assertion.
   yes_ 'generated pages carry no placeholder or null leak' \
-       "$(yesrc python3 - "$TMP/a/cfs-gate4.md" "$TMP/a/omp-governance.md" <<'PY'
+       "$(yesrc python3 - "$TMP/a/cfs-gate4.md" "$TMP/a/omp-governance.md" "$TMP/a/chemgym-v2.md" <<'PY'
 import pathlib, re, sys
 bad = []
 for p in sys.argv[1:]:
@@ -125,16 +142,21 @@ PY
     yes_ 'guppi_gate4 snapshot untouched' \
          "$([ "$(sha "$LIVE/receipts.json") $(sha "$LIVE/stale_pre_patch/manifest.json")" = "$LIVE_BEFORE" ] && printf yes || printf no)"
   fi
+  if [ -n "$CGLIVE_BEFORE" ]; then
+    yes_ 'chemgym-v2 snapshot untouched' \
+         "$([ "$(sha "$CGLIVE/receipts.json")" = "$CGLIVE_BEFORE" ] && printf yes || printf no)"
+  fi
 fi
 
 # ------------------------------------------------- mutant: stale generated numeral
 if [ "$MODE" = numeral ]; then
   cp -a "$DOCS" "$TMP/m"; cp -a "$DOCS" "$TMP/r"
   gen "$TMP/r" >/dev/null
-  before="$(sha "$TMP/m/cfs-gate4.md")"
+  for page in cfs-gate4.md chemgym-v2.md; do
+  before="$(sha "$TMP/m/$page")"
   # Value-agnostic perturbation: bump the last digit of the first 4-decimal numeral
   # the generator emitted. Refuses to write a byte-identical file.
-  python3 - "$TMP/m/cfs-gate4.md" <<'PY' || exit 2
+  python3 - "$TMP/m/$page" <<'PY' || exit 2
 import pathlib, re, sys
 p = pathlib.Path(sys.argv[1]); t = p.read_text()
 m = re.search(r'\d+\.\d{4}', t)
@@ -143,12 +165,13 @@ if not m:
 s = m.group(0)
 p.write_text(t[:m.start()] + s[:-1] + str((int(s[-1]) + 1) % 10) + t[m.end():])
 PY
-  yes_ 'perturbation changed the page' \
-       "$([ "$(sha "$TMP/m/cfs-gate4.md")" != "$before" ] && printf yes || printf no)"
-  yes_ 'fresh-generation parity rejects the perturbed page' \
-       "$([ -n "$(diff -q "$TMP/m/cfs-gate4.md" "$TMP/r/cfs-gate4.md" 2>&1)" ] && printf yes || printf no)"
-  yes_ 'reference regeneration matches the committed page (control is sound)' \
-       "$([ -z "$(diff -q "$TMP/r/cfs-gate4.md" "$DOCS/cfs-gate4.md")" ] && printf yes || printf no)"
+  yes_ "perturbation changed $page" \
+       "$([ "$(sha "$TMP/m/$page")" != "$before" ] && printf yes || printf no)"
+  yes_ "fresh-generation parity rejects the perturbed $page" \
+       "$([ -n "$(diff -q "$TMP/m/$page" "$TMP/r/$page" 2>&1)" ] && printf yes || printf no)"
+  yes_ "reference regeneration matches the committed $page (control is sound)" \
+       "$([ -z "$(diff -q "$TMP/r/$page" "$DOCS/$page")" ] && printf yes || printf no)"
+  done
 fi
 
 # ------------------------------------------------------ mutant: stale bundle body
@@ -172,9 +195,15 @@ if [ "$MODE" = sync ]; then
   cp "$LIVE/receipts.json" "$VEND/receipts.json"
   cp "$LIVE/stale_pre_patch/manifest.json" "$VEND/stale_pre_patch/manifest.json"
   ( cd "$VEND" && sha256sum receipts.json stale_pre_patch/manifest.json ) > "$SUMS"
+  [ -d "$CGLIVE" ] || { echo "sync-vendor: no live chemgym repo at $CGLIVE"; echo "passed: 0 failed: 1"; echo "checks: 1"; exit 1; }
+  mkdir -p "$CGVEND"
+  cp "$CGLIVE/receipts.json" "$CGVEND/receipts.json"
+  ( cd "$CGVEND" && sha256sum receipts.json ) > "$CGSUMS"
   yes_ 'synced receipts.json parses'    "$(parses "$VEND/receipts.json")"
   yes_ 'synced manifest.json parses'    "$(parses "$VEND/stale_pre_patch/manifest.json")"
   yes_ 're-pinned SHA256SUMS verifies'  "$( (cd "$VEND" && yesrc sha256sum -c --status "$REPO/$SUMS") )"
+  yes_ 'synced chemgym receipts.json parses'   "$(parses "$CGVEND/receipts.json")"
+  yes_ 're-pinned chemgym SHA256SUMS verifies' "$( (cd "$CGVEND" && yesrc sha256sum -c --status "$REPO/$CGSUMS") )"
 fi
 
 echo "passed: $PASS failed: $FAIL"

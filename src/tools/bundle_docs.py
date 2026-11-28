@@ -22,7 +22,7 @@ import pathlib
 import sys
 
 ORDER = ['architecture.md', 'compaction-sieve.md', 'attractors.md', 'workstation.md',
-         'projects.md', 'theory.md', 'influences.md', 'omp-governance.md', 'cfs-gate4.md']
+         'projects.md', 'theory.md', 'influences.md', 'omp-governance.md', 'cfs-gate4.md', 'chemgym-v2.md']
 SEP = '=' * 80
 HEADER = '# OMP Governance Scaffold \u2014 Complete Documentation Bundle (llms-full.txt)\n\n\n'
 
